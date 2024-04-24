@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi_users import FastAPIUsers
 from src.auth.db_user import User
 from src.auth.manager import get_user_manager, auth_backend
+from src.auth.models import metadata
 from src.auth.schemas import UserRead, UserCreate
 from core.models import db_helper, Base
 
@@ -13,6 +14,7 @@ from core.models import db_helper, Base
 async def lifespan(app: FastAPI):
     async with db_helper.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(metadata.create_all)
     yield
 
 
