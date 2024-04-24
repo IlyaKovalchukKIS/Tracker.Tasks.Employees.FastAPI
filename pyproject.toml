@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "tracker-task"
+version = "0.1.0"
+description = ""
+authors = ["User <mrlivedance@vk.com>"]
+readme = "README.md"
+packages = [{include = "tracker_task"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["all"], version = "^0.110.2"}
+fastapi-users = {extras = ["sqlalchemy"], version = "^13.0.0"}
+asyncpg = "^0.29.0"
+alembic = "^1.13.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
