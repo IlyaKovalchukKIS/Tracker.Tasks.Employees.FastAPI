@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi_users import FastAPIUsers
-from src.auth.db_user import User
+from src.auth.db_user import User as UserSchemas
 from src.auth.manager import get_user_manager, auth_backend
 from src.auth.schemas import UserRead, UserCreate
 from core.models import db_helper, Base
@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-fastapi_users = FastAPIUsers[User, int](
+fastapi_users = FastAPIUsers[UserSchemas, int](
     get_user_manager,
     [auth_backend],
 )
