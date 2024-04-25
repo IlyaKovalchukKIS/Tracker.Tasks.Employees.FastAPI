@@ -6,5 +6,5 @@ __all__ = (
 )
 
 from .base import Base
-from .task import Task
+from .task_model import Task
 from .db_helper import DatabaseHelper, db_helper
