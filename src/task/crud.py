@@ -1,7 +1,7 @@
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.models.task_model import Task
-from src.task.schemas import TaskCreateSchemas
+from src.task.schemas import TaskCreateSchemas, TaskReadSchemas
 
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
@@ -28,3 +28,16 @@ async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task
     await session.commit()
     await session.refresh(task)
     return task
+
+
+async def update_task(
+    session: AsyncSession, task: Task, task_update: TaskCreateSchemas
+) -> Task:
+    for name, value in task_update.model_dump().items():
+        setattr(task, name, value)
+    await session.commit()
+    return task
+
+
+async def delete_task(session: AsyncSession, task: Task) -> None:
+    await session.delete(task)
