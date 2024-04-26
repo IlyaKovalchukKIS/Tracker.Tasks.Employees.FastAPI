@@ -1,4 +1,5 @@
-from datetime import datetime, UTC
+from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -6,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class TaskBaseSchemas(BaseModel):
     title: str
     description: str
-    # deadline: datetime
+    deadline: Optional[datetime]
     parent_id: int | None = None
     owner_id: int
     executor_id: int | None = None
@@ -20,7 +21,7 @@ class TaskReadSchemas(TaskBaseSchemas):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    # date_at: datetime = datetime.now(UTC)
+    date_at: Optional[datetime]
 
 
 class TaskUpdateSchemas(TaskBaseSchemas):
