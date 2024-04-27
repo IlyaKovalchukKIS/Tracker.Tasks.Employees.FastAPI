@@ -32,3 +32,7 @@ class TaskUpdateSchemas(TaskBaseSchemas):
 
 class UserTaskSchemas(UserRead):
     tasks: list[TaskReadSchemas]
+
+
+class UserTaskExecutorSchemas(UserRead):
+    executed_tasks: list[TaskReadSchemas]

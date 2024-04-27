@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, ForeignKey, Integer, DateTime
+from sqlalchemy import String, ForeignKey, Integer, DateTime, ForeignKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -21,4 +21,21 @@ class Task(Base):
         Integer, ForeignKey("user.id"), nullable=True
     )
 
-    # owner = relationship("Task", back_populates="tasks", foreign_keys="User.id")
+    # owner = relationship("User", back_populates="tasks")
+    # executor = relationship("User", back_populates="executed_tasks")
+
+
+# from sqlalchemy import ForeignKey
+# from sqlalchemy.orm import relationship
+#
+# class User(Base):
+#     # ... (other column definitions)
+#
+#     tasks = relationship("Task", back_populates="owner")
+#     executed_tasks = relationship("Task", back_populates="executor")
+#
+# class Task(Base):
+#     # ... (other column definitions)
+#
+#     owner = relationship("User", back_populates="tasks")
+#     executor = relationship("User", back_populates="executed_tasks")

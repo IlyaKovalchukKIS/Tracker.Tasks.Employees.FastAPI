@@ -16,3 +16,4 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     tasks = relationship("Task", foreign_keys="Task.owner_id")
+    executed_tasks = relationship("Task", foreign_keys="Task.executor_id")

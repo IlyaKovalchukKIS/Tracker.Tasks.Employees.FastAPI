@@ -3,11 +3,17 @@ from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import update_task, delete_task, get_users_tasks
+from .crud import (
+    update_task,
+    delete_task,
+    get_users_tasks,
+    get_users_tasks_executor,
+)
 from .schemas import (
     TaskCreateSchemas,
     TaskReadSchemas,
     UserTaskSchemas,
+    UserTaskExecutorSchemas,
 )
 from . import crud
 from src.core.models.db_helper import db_helper
@@ -69,3 +75,10 @@ async def get_users_tasks_router(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     return await get_users_tasks(session=session)
+
+
+@task_router.get("/tasks/executor/", response_model=List[UserTaskExecutorSchemas])
+async def get_users_tasks_executor_router(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    return await get_users_tasks_executor(session=session)

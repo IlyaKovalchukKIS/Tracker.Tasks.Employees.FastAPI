@@ -1,6 +1,8 @@
+from typing import Optional
+
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, relationship
 
 from src.core.models.task_model import Task
 from src.core.models.user_model import User
@@ -57,7 +59,14 @@ async def delete_task(
 
 
 async def get_users_tasks(session: AsyncSession):
-    stmt = select(User).options(joinedload(User.tasks)).order_by(User.id)
+    stmt = select(User).options(selectinload(User.tasks)).order_by(User.id)
+    users = await session.scalars(stmt)
+    print(users)
+    return list(users.unique())
+
+
+async def get_users_tasks_executor(session: AsyncSession):
+    stmt = select(User).options(selectinload(User.executed_tasks)).order_by(User.id)
     users = await session.scalars(stmt)
     print(users)
     return list(users.unique())
