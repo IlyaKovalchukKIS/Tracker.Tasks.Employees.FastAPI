@@ -1,13 +1,9 @@
-from typing import Optional
-
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload, relationship
-
+from sqlalchemy.orm import selectinload
 from src.core.models.task_model import Task
 from src.core.models.user_model import User
-from src.task.schemas import TaskCreateSchemas, TaskReadSchemas, UserTaskSchemas
-from fastapi import HTTPException, status
+from src.task.schemas import TaskCreateSchemas
 
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
@@ -61,12 +57,10 @@ async def delete_task(
 async def get_users_tasks(session: AsyncSession):
     stmt = select(User).options(selectinload(User.tasks)).order_by(User.id)
     users = await session.scalars(stmt)
-    print(users)
     return list(users.unique())
 
 
 async def get_users_tasks_executor(session: AsyncSession):
     stmt = select(User).options(selectinload(User.executed_tasks)).order_by(User.id)
     users = await session.scalars(stmt)
-    print(users)
     return list(users.unique())
