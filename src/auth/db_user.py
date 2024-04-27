@@ -4,8 +4,9 @@ from fastapi import Depends
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from src.auth.schemas import User
+from src.core.config import settings
 
-DATABASE_URL = "postgresql+asyncpg://postgres:537865@localhost:5432/tracker_task.v.2"
+DATABASE_URL = settings.db_url
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
