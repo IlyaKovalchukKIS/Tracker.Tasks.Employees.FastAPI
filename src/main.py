@@ -6,7 +6,7 @@ from fastapi_users import FastAPIUsers
 from src.auth.db_user import User as UserSchemas
 from src.auth.manager import get_user_manager, auth_backend
 from src.auth.schemas import UserRead, UserCreate
-from core.models.db_helper import db_helper
+from src.core.models.db_helper import db_helper
 from src.core.models.task_model import Task
 from src.core.models.user_model import User
 from src.task import task_router
