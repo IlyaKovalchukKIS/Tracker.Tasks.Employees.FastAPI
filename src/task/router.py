@@ -1,10 +1,14 @@
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import update_task
-from .schemas import TaskCreateSchemas, TaskReadSchemas
+from .crud import update_task, delete_task, get_users_tasks
+from .schemas import (
+    TaskCreateSchemas,
+    TaskReadSchemas,
+    UserTaskSchemas,
+)
 from . import crud
 from src.core.models.db_helper import db_helper
 
@@ -49,3 +53,19 @@ async def update_task_router(
     task = await crud.get_task(task_id=task_id, session=session)
     result = await update_task(task=task, session=session, task_update=task_update)
     return result
+
+
+@task_router.delete("/delete/")
+async def delete_task_router(
+    owner_id: int,
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    return await delete_task(owner_id=owner_id, task_id=task_id, session=session)
+
+
+@task_router.get("/tasks/owner/", response_model=List[UserTaskSchemas])
+async def get_users_tasks_router(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    return await get_users_tasks(session=session)
