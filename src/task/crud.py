@@ -1,7 +1,11 @@
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
+
 from src.core.models.task_model import Task
-from src.task.schemas import TaskCreateSchemas, TaskReadSchemas
+from src.core.models.user_model import User
+from src.task.schemas import TaskCreateSchemas, TaskReadSchemas, UserTaskSchemas
+from fastapi import HTTPException, status
 
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
@@ -39,5 +43,21 @@ async def update_task(
     return task
 
 
-async def delete_task(session: AsyncSession, task: Task) -> None:
-    await session.delete(task)
+async def delete_task(
+    session: AsyncSession, task_id: int, owner_id: int
+) -> dict | None:
+    result = await session.get(Task, task_id)
+    if result is not None:
+        if result.owner_id == owner_id:
+            await session.delete(result)
+            await session.commit()
+            return {"detail": "Success delete task"}
+        return {"detail": "User is not owner to task"}
+    return {"detail": f"There is no task with this number {task_id} in the table"}
+
+
+async def get_users_tasks(session: AsyncSession):
+    stmt = select(User).options(joinedload(User.tasks)).order_by(User.id)
+    users = await session.scalars(stmt)
+    print(users)
+    return list(users.unique())
