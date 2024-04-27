@@ -3,12 +3,6 @@ from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import (
-    update_task,
-    delete_task,
-    get_users_tasks,
-    get_users_tasks_executor,
-)
 from .schemas import (
     TaskCreateSchemas,
     TaskReadSchemas,
@@ -57,7 +51,7 @@ async def update_task_router(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     task = await crud.get_task(task_id=task_id, session=session)
-    result = await update_task(task=task, session=session, task_update=task_update)
+    result = await crud.update_task(task=task, session=session, task_update=task_update)
     return result
 
 
@@ -67,18 +61,18 @@ async def delete_task_router(
     task_id: int,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
-    return await delete_task(owner_id=owner_id, task_id=task_id, session=session)
+    return await crud.delete_task(owner_id=owner_id, task_id=task_id, session=session)
 
 
 @task_router.get("/tasks/owner/", response_model=List[UserTaskSchemas])
 async def get_users_tasks_router(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
-    return await get_users_tasks(session=session)
+    return await crud.get_users_tasks(session=session)
 
 
 @task_router.get("/tasks/executor/", response_model=List[UserTaskExecutorSchemas])
 async def get_users_tasks_executor_router(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
-    return await get_users_tasks_executor(session=session)
+    return await crud.get_users_tasks_executor(session=session)
