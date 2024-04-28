@@ -7,6 +7,8 @@ from src.auth.schemas import UserRead
 
 
 class TaskBaseSchemas(BaseModel):
+    """Базовая схема задач"""
+
     title: str
     description: str
     deadline: Optional[datetime]
@@ -16,10 +18,14 @@ class TaskBaseSchemas(BaseModel):
 
 
 class TaskCreateSchemas(TaskBaseSchemas):
+    """Схема создания задачи"""
+
     pass
 
 
 class TaskReadSchemas(TaskBaseSchemas):
+    """Схема чтения задачи"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -27,12 +33,16 @@ class TaskReadSchemas(TaskBaseSchemas):
 
 
 class TaskUpdateSchemas(TaskBaseSchemas):
+    """Схема изменения задачи"""
+
     pass
 
 
-class UserTaskSchemas(UserRead):
+class UserTaskOwnerSchemas(UserRead):
+    """Схема списка пользователей с созданными ими задачами"""
     tasks: list[TaskReadSchemas]
 
 
 class UserTaskExecutorSchemas(UserRead):
+    """Схема списка пользователей с назначенными им задачами"""
     executed_tasks: list[TaskReadSchemas]
