@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 
 class User(Base):
+    """Модель пользователей"""
+
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     hashed_password: Mapped[str]
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

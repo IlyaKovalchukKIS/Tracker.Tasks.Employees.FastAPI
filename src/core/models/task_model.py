@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 
 class Task(Base):
+    """Модель задач"""
+
     title: Mapped[str] = mapped_column(String(100))
     description: Mapped[str]
     owner_id: Mapped[int] = mapped_column(ForeignKey("user.id"))

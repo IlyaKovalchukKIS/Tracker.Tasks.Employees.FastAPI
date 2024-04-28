@@ -2,6 +2,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, declared_attr
 
 
 class Base(DeclarativeBase):
+    """Базовый абстрактный класс для создания моделей"""
+
     __abstract__ = True
 
     @declared_attr

@@ -7,6 +7,7 @@ from src.task.schemas import TaskCreateSchemas
 
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
+    """Получение всех задач"""
     stmt = select(Task).order_by(Task.id)
     result: Result = await session.execute(stmt)
     tasks = result.scalars().all()
@@ -14,10 +15,12 @@ async def get_all_tasks(session: AsyncSession) -> list[Task]:
 
 
 async def get_task(session: AsyncSession, task_id: int) -> Task | None:
+    """Получение задачи по id"""
     return await session.get(Task, task_id)
 
 
 async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task:
+    """Создание задачи"""
     task = task_in.model_dump()
     if task["parent_id"] == 0:
         task.pop("parent_id")
@@ -35,6 +38,7 @@ async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task
 async def update_task(
     session: AsyncSession, task: Task, task_update: TaskCreateSchemas
 ) -> Task:
+    """Изменение задачи"""
     for name, value in task_update.model_dump().items():
         setattr(task, name, value)
     await session.commit()
@@ -44,6 +48,7 @@ async def update_task(
 async def delete_task(
     session: AsyncSession, task_id: int, owner_id: int
 ) -> dict | None:
+    """Удаление задачи по id"""
     result = await session.get(Task, task_id)
     if result is not None:
         if result.owner_id == owner_id:
@@ -55,12 +60,14 @@ async def delete_task(
 
 
 async def get_users_tasks(session: AsyncSession):
+    """Функция получения списка пользователей со списком задач которые они создали"""
     stmt = select(User).options(selectinload(User.tasks)).order_by(User.id)
     users = await session.scalars(stmt)
     return list(users.unique())
 
 
 async def get_users_tasks_executor(session: AsyncSession):
+    """Функция получение списка пользователей со списком назначеннх им задач"""
     stmt = select(User).options(selectinload(User.executed_tasks)).order_by(User.id)
     users = await session.scalars(stmt)
     return list(users.unique())

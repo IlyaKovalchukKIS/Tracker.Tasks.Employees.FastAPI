@@ -14,6 +14,7 @@ from src.task import task_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Создание таблиц перед запуском приложения"""
     async with db_helper.engine.begin() as conn:
         # await conn.run_sync(Task.metadata.drop_all)
         await conn.run_sync(User.metadata.create_all)
