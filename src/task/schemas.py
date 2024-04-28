@@ -30,12 +30,13 @@ class TaskReadSchemas(TaskBaseSchemas):
 
     id: int
     date_at: Optional[datetime]
+    is_active: bool
 
 
 class TaskUpdateSchemas(TaskBaseSchemas):
     """Схема изменения задачи"""
 
-    pass
+    is_active: bool
 
 
 class UserTaskOwnerSchemas(UserRead):

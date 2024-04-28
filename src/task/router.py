@@ -3,6 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .crud import get_free_tasks
 from .schemas import (
     TaskCreateSchemas,
     TaskReadSchemas,
@@ -15,7 +16,7 @@ from src.core.models.db_helper import db_helper
 task_router = APIRouter(prefix="/task", tags=["Task"])
 
 
-@task_router.get("/", response_model=list[TaskReadSchemas])
+@task_router.get("/", response_model=List[TaskReadSchemas])
 async def get_all_tasks_router(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
@@ -25,6 +26,18 @@ async def get_all_tasks_router(
     :return:
     """
     return await crud.get_all_tasks(session=session)
+
+
+@task_router.get("/free/", response_model=List[TaskReadSchemas])
+async def get_free_tasks_router(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    """
+    Эндпоинт получения списка свободных задач
+    :param session: Асинхронная сессия
+    :return: Список свободных задач
+    """
+    return await get_free_tasks(session=session)
 
 
 @task_router.get("/{task_id}/", response_model=TaskReadSchemas)

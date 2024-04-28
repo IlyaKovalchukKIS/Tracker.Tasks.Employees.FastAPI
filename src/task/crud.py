@@ -19,6 +19,13 @@ async def get_task(session: AsyncSession, task_id: int) -> Task | None:
     return await session.get(Task, task_id)
 
 
+async def get_free_tasks(session: AsyncSession) -> list[Task] | None:
+    """Получене списка свободных задач"""
+    stmt = select(Task).filter(Task.is_active == False).order_by(Task.deadline)
+    result: Result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
 async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task:
     """Создание задачи"""
     task = task_in.model_dump()
