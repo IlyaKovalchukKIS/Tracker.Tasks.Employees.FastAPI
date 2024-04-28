@@ -20,7 +20,7 @@ class TaskBaseSchemas(BaseModel):
 class TaskCreateSchemas(TaskBaseSchemas):
     """Схема создания задачи"""
 
-    pass
+    is_active: bool | None = False
 
 
 class TaskReadSchemas(TaskBaseSchemas):
