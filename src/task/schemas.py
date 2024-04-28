@@ -40,9 +40,11 @@ class TaskUpdateSchemas(TaskBaseSchemas):
 
 class UserTaskOwnerSchemas(UserRead):
     """Схема списка пользователей с созданными ими задачами"""
+
     tasks: list[TaskReadSchemas]
 
 
 class UserTaskExecutorSchemas(UserRead):
     """Схема списка пользователей с назначенными им задачами"""
+
     executed_tasks: list[TaskReadSchemas]
