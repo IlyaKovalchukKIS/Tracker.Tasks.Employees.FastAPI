@@ -4,12 +4,12 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi_users import FastAPIUsers
 from src.auth.db_user import User as UserSchemas
-from src.auth.manager import get_user_manager, auth_backend
-from src.auth.schemas import UserRead, UserCreate
-from src.core.models.db_helper import db_helper
-from src.core.models.task_model import Task
-from src.core.models.user_model import User
-from src.task import task_router
+from src.repositories.crud.user import get_user_manager, auth_backend
+from src.schemas.user import UserRead, UserCreate
+from src.repositories.db_helper import db_helper
+from src.repositories.models.task import Task
+from src.repositories.models.user import User
+from src.routing.task import task_router
 
 
 @asynccontextmanager
@@ -43,4 +43,4 @@ app.include_router(
 app.include_router(task_router)
 
 if __name__ == "__main__":
-    uvicorn.run("src.main:app", reload=True)
+    uvicorn.run("src.app:app", reload=True)

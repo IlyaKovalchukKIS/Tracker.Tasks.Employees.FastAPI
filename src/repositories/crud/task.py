@@ -1,9 +1,9 @@
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from src.core.models.task_model import Task
-from src.core.models.user_model import User
-from src.task.schemas import TaskCreateSchemas
+from src.repositories.models.task import Task
+from src.repositories.models.user import User
+from src.schemas.task import TaskCreateSchemas
 
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
