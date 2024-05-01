@@ -8,9 +8,11 @@ from fastapi_users.authentication import (
     JWTStrategy,
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.db_user import User, get_user_db
-from src.core.config import *
+from src.auth.db_user import User
+from src.config.config import SECRET_KEY_AUTH
+from src.repositories.db_helper import db_helper
 
 SECRET = SECRET_KEY_AUTH
 
@@ -31,6 +33,10 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         self, user: User, token: str, request: Optional[Request] = None
     ):
         print(f"Verification requested for user {user.id}. Verification token: {token}")
+
+
+async def get_user_db(session: AsyncSession = Depends(db_helper.session_dependency)):
+    yield SQLAlchemyUserDatabase(session, User)
 
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
