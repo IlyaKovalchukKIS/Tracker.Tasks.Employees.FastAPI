@@ -3,15 +3,23 @@ from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import get_free_tasks
-from .schemas import (
+from src.repositories.crud.task import (
+    get_free_tasks,
+    get_all_tasks,
+    get_task,
+    create_task,
+    update_task,
+    delete_task,
+    get_users_tasks,
+    get_users_tasks_executor,
+)
+from src.schemas.task import (
     TaskCreateSchemas,
     TaskReadSchemas,
     UserTaskOwnerSchemas,
     UserTaskExecutorSchemas,
 )
-from . import crud
-from src.core.models.db_helper import db_helper
+from src.repositories.db_helper import db_helper
 
 task_router = APIRouter(prefix="/task", tags=["Task"])
 
@@ -25,7 +33,7 @@ async def get_all_tasks_router(
     :param session: Асинхронная сессия
     :return:
     """
-    return await crud.get_all_tasks(session=session)
+    return await get_all_tasks(session=session)
 
 
 @task_router.get("/free/", response_model=List[TaskReadSchemas])
@@ -51,7 +59,7 @@ async def get_task_router(
     :param session: Асинхронная сессия
     :return: Задача
     """
-    task = await crud.get_task(task_id=task_id, session=session)
+    task = await get_task(task_id=task_id, session=session)
     if task is not None:
         return task
     raise HTTPException(
@@ -71,7 +79,7 @@ async def create_task_router(
     :param session: Асинхронная сессия
     :return: Созданная задача
     """
-    return await crud.create_task(task_in=task_in, session=session)
+    return await create_task(task_in=task_in, session=session)
 
 
 @task_router.put("/update/{task_id}/")
@@ -87,8 +95,8 @@ async def update_task_router(
     :param session: Асинхронная сессия
     :return: Измененная задача
     """
-    task = await crud.get_task(task_id=task_id, session=session)
-    result = await crud.update_task(task=task, session=session, task_update=task_update)
+    task = await get_task(task_id=task_id, session=session)
+    result = await update_task(task=task, session=session, task_update=task_update)
     return result
 
 
@@ -105,7 +113,7 @@ async def delete_task_router(
     :param session: Асинхронная сессия
     :return: Словарь со статусом удаления задачи
     """
-    return await crud.delete_task(owner_id=owner_id, task_id=task_id, session=session)
+    return await delete_task(owner_id=owner_id, task_id=task_id, session=session)
 
 
 @task_router.get("/tasks/owner/", response_model=List[UserTaskOwnerSchemas])
@@ -117,7 +125,7 @@ async def get_users_tasks_router(
     :param session: Асинхронная сессия
     :return: Список пользователей с созданными ими задачами
     """
-    return await crud.get_users_tasks(session=session)
+    return await get_users_tasks(session=session)
 
 
 @task_router.get("/tasks/executor/", response_model=List[UserTaskExecutorSchemas])
@@ -129,4 +137,4 @@ async def get_users_tasks_executor_router(
     :param session: Асинхронная сессия
     :return: Список пользователей с назначенными им задачами
     """
-    return await crud.get_users_tasks_executor(session=session)
+    return await get_users_tasks_executor(session=session)

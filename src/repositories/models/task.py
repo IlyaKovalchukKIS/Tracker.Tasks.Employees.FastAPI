@@ -6,15 +6,14 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     DateTime,
-    ForeignKeyConstraint,
     Boolean,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from src.repositories.models.base import Base
 
 if TYPE_CHECKING:
-    from src.core.models.user_model import User
+    pass
 
 
 class Task(Base):
