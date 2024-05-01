@@ -10,7 +10,7 @@ from fastapi_users.authentication import (
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.db_user import User
+from src.schemas.user import User
 from src.config.config import SECRET_KEY_AUTH
 from src.repositories.db_helper import db_helper
 

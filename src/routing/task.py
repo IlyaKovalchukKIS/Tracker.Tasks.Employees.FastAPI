@@ -3,7 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.repositories.crud.task import (
+from src.repositories.crud import (
     get_free_tasks,
     get_all_tasks,
     get_task,
@@ -19,7 +19,7 @@ from src.schemas.task import (
     UserTaskOwnerSchemas,
     UserTaskExecutorSchemas,
 )
-from src.repositories.db_helper import db_helper
+from src.repositories import db_helper
 
 task_router = APIRouter(prefix="/task", tags=["Task"])
 

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from asyncio import current_task
 
-from src.config.config import DB_URL, DB_ECHO
+from src.config import DB_URL, DB_ECHO
 
 
 class DatabaseHelper:

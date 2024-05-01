@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.repositories.models.base import Base
+from .base import Base
 
 if TYPE_CHECKING:
     pass
@@ -29,22 +29,3 @@ class Task(Base):
     executor_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user.id"), nullable=True
     )
-
-    # owner = relationship("User", back_populates="tasks")
-    # executor = relationship("User", back_populates="executed_tasks")
-
-
-# from sqlalchemy import ForeignKey
-# from sqlalchemy.orm import relationship
-#
-# class User(Base):
-#     # ... (other column definitions)
-#
-#     tasks = relationship("Task", back_populates="owner")
-#     executed_tasks = relationship("Task", back_populates="executor")
-#
-# class Task(Base):
-#     # ... (other column definitions)
-#
-#     owner = relationship("User", back_populates="tasks")
-#     executor = relationship("User", back_populates="executed_tasks")

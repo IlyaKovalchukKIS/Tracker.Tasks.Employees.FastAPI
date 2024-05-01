@@ -3,12 +3,10 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi_users import FastAPIUsers
-from src.auth.db_user import User as UserSchemas
-from src.repositories.crud.user import get_user_manager, auth_backend
-from src.schemas.user import UserRead, UserCreate
-from src.repositories.db_helper import db_helper
-from src.repositories.models.task import Task
-from src.repositories.models.user import User
+from src.schemas import UserRead, UserCreate, User as UserSchemas
+from src.repositories.crud import get_user_manager, auth_backend
+from src.repositories import db_helper
+from src.repositories.models import Task, User
 from src.routing.task import task_router
 
 
