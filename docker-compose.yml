@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  tracker_task_db:
+    image: postgres:latest
+    restart: always
+    hostname: ${DB_HOST}
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=5432
+      - SECRET_KEY_AUTH=${SECRET_KEY_AUTH}
+      - DB_ECHO=${DB_ECHO}
+    ports:
+      - "8002:8000"
+    volumes:
+      - .:/code
+    command: >
+      sh -c "alembic upgrade head && uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      - tracker_task_db
