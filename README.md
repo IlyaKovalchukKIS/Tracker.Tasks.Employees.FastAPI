@@ -24,6 +24,8 @@ git clone https://github.com/IlyaKovalchukKIS/Tracker_Task.git
 * ### 4. Выполнить комманды
 ```commandline
 docker-compose build
+```
+```commandline
 docker-compose up -d
 ```
 
