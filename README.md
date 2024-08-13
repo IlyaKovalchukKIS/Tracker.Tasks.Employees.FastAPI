@@ -12,7 +12,7 @@ ___
 git clone https://github.com/IlyaKovalchukKIS/Tracker_Task.git
 ```  
 
-* ### 2. Нобходимо переименовать файл [.env.example](https://github.com/IlyaKovalchukKIS/Tracker_Task/blob/master/.env.example) в ```.env``` и добавить в него свои переменные. Пример:
+* ### 2. Нобходимо переименовать файл [.env.example](.env.example) в ```.env``` и добавить в него свои переменные. Пример:
 * * > DB_USER=postgres
 * * > DB_PASSWORD=password
 * * > DB_HOST=your_host_db
@@ -28,3 +28,9 @@ docker-compose up -d
 ```
 
 * ### 5. Для просмотра документации перейти по адресу http://127.0.0.1:8000/docs/
+
+# Для получения доступа к эндпоинтам 
+## 1. Необходимо пройти регистрации в сервисе:
+### ![](images/register.png)
+## 2. Пройти авторизацию:
+### ![](images/login.png)
