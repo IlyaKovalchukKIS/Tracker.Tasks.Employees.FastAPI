@@ -26,10 +26,10 @@ async def get_free_tasks(session: AsyncSession) -> list[Task] | None:
     return list(result.scalars().all())
 
 
-async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task:
+async def create_task(session: AsyncSession, task_in: TaskCreateSchemas, owner_id: int) -> Task:
     """Создание задачи"""
     task = task_in.model_dump()
-    print(task)
+    task["owner_id"] = owner_id
     if task["parent_id"] == 0:
         task.pop("parent_id")
     if task["executor_id"] != 0 and task["executor_id"] is not None:
@@ -38,7 +38,6 @@ async def create_task(session: AsyncSession, task_in: TaskCreateSchemas) -> Task
     if task["executor_id"] == 0:
         task.pop("executor_id")
 
-    print(task)
     task = Task(**task)
     session.add(task)
     await session.commit()
