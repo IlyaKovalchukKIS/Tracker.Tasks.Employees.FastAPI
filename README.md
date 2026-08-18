@@ -1,8 +1,8 @@
-# Employee Task Management API
+# Employee Task Management
 
 **English** | [Русский](README.ru.md)
 
-REST API for assigning, tracking, and updating employee work. The service is intended for teams that need a single source of truth for tasks, ownership, and progress without a full project-management suite.
+REST API and bilingual web client for assigning, tracking, and updating employee work. The service is intended for teams that need a single source of truth for tasks, ownership, and progress without a full project-management suite.
 
 ## Problem
 
@@ -10,7 +10,7 @@ Managers need a reliable way to create work, assign it to employees, and see sta
 
 ## Solution
 
-This API gives a small team a backend for that workflow: JWT-authenticated users, role-based access, and a task resource with status, priority, assignee, and due dates. Clients can filter, search, and paginate work instead of loading the entire dataset.
+This project gives a small team a backend for that workflow — JWT-authenticated users, role-based access, and a task resource with status, priority, assignee, and due dates — plus a web client so the workflow is usable without an API tool. Clients can filter, search, and paginate work instead of loading the entire dataset.
 
 ## Key Features
 
@@ -20,6 +20,7 @@ This API gives a small team a backend for that workflow: JWT-authenticated users
 - Task status (`TODO`, `IN_PROGRESS`, `DONE`, `CANCELLED`) and priority (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`)
 - Pagination, filtering, sorting, and search
 - Optional subtasks via `parent_id`
+- Web client in English and Russian, switchable from any page, with light and dark themes
 - Alembic migrations against PostgreSQL
 - Automated tests and GitHub Actions CI
 - Docker Compose for local and VPS-style deployment
@@ -27,8 +28,8 @@ This API gives a small team a backend for that workflow: JWT-authenticated users
 ## Architecture
 
 ```
-Client
-  ↓
+Browser (static SPA served at /)
+  ↓  fetch + Bearer token
 FastAPI (routing / validation)
   ↓
 Service layer (business rules and authorization)
@@ -48,6 +49,7 @@ The HTTP layer stays thin. Services enforce who can create, view, update, or del
 - SQLAlchemy 2 (async)
 - Alembic
 - fastapi-users (password hashing and JWT access tokens)
+- Vanilla ES modules and CSS for the web client, with no build step
 - Docker / Docker Compose
 - Pytest
 - Ruff
@@ -78,6 +80,50 @@ Send the access token as `Authorization: Bearer <token>`.
 
 A manager's employee scope is: users assigned to that manager (`manager_id`) plus employees who do not yet have a manager.
 
+## Web Client
+
+The API serves a web client at the root URL. Start the app and open http://127.0.0.1:8000 — no separate build, dev server, or `CORS_ORIGINS` entry is needed, because the client is served from the same origin as the API.
+
+What it covers:
+
+- Register and sign in; the session is refreshed automatically when the access token expires
+- Task list with search, status / priority / assignee filters, sorting, pagination, and status counts
+- Create, edit, assign, and delete tasks, with a task detail page for the full description and metadata
+- Inline status changes, so employees can report progress without opening a form
+- Employee directory with assigned tasks, and an administrator screen for roles, managers, and account state
+- Profile page for changing your own email or password
+
+The interface hides what the caller's role cannot do, and the API still enforces every rule independently.
+
+### Languages and appearance
+
+English and Russian are both first-class. The switcher sits in the header on every page, including the sign-in and registration screens. The choice is stored in the browser, applied to `<html lang>`, and used for date and number formatting; on a first visit the browser's preferred language is used. Error messages returned by the API are translated as well.
+
+A light / dark theme toggle sits next to the language switcher and follows the operating system preference until it is changed.
+
+### Implementation
+
+`frontend/` is plain ES modules with no build step and no dependencies, so the repository stays Python-only and `docker compose up` serves the client unchanged. Routing is hash-based (`#/tasks/12`), which is why serving `index.html` at `/` is enough for deep links to work without rewrite rules.
+
+```
+frontend/
+  index.html             # App shell
+  css/styles.css         # Design tokens and components
+  js/
+    app.js               # Router, header, language and theme switchers
+    api.js               # Fetch client, token storage, refresh on 401
+    i18n.js              # EN / RU dictionaries and locale-aware formatting
+    ui.js                # Elements, badges, toasts, accessible modal
+    session.js           # Current user
+    directory.js         # User lookup cache, to show emails instead of ids
+    validate.js          # Client-side mirror of the API's field rules
+    views/               # Auth, tasks, employees, users, profile
+```
+
+Tokens are kept in `localStorage`, which is convenient for a same-origin client but readable by any script on the page. If you extend this with third-party scripts, move to cookie-based sessions first.
+
+Accessibility was part of the work rather than an afterthought: labelled controls with inline validation messages, a skip link, keyboard-navigable dialogs with a focus trap and Escape to close, `aria-current` on the active nav item, live-region toasts, and visible focus rings. Layout and motion respect `prefers-reduced-motion`.
+
 ## API Documentation
 
 After the API is running, OpenAPI is available at:
@@ -100,6 +146,8 @@ alembic upgrade head
 poetry run uvicorn src.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Then open http://127.0.0.1:8000 for the web client, or http://127.0.0.1:8000/docs for the API documentation. The first account you register becomes the administrator.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env`. The repository does not contain real secrets.
@@ -112,7 +160,7 @@ Copy `.env.example` to `.env`. The repository does not contain real secrets.
 | `JWT_ALGORITHM` | JWT algorithm (default `HS256`) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime |
-| `CORS_ORIGINS` | Optional comma-separated browser origins |
+| `CORS_ORIGINS` | Optional comma-separated browser origins; not needed for the bundled client |
 | `DEBUG` | Verbose application logs when `true` |
 
 ## Running Tests
@@ -137,7 +185,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API listens on http://127.0.0.1:8000. Compose starts PostgreSQL, runs migrations, then starts Uvicorn.
+The API and the web client both listen on http://127.0.0.1:8000. Compose starts PostgreSQL, runs migrations, then starts Uvicorn.
 
 ## Project Structure
 
@@ -154,6 +202,7 @@ src/
     models/              # SQLAlchemy models
     crud/                # Query helpers
     db_helper.py         # Async engine and session
+frontend/                # Bilingual web client, served at /
 migrations/              # Alembic revisions
 tests/                   # Pytest suite
 deploy/nginx.example.conf
@@ -162,7 +211,7 @@ deploy/nginx.example.conf
 
 ## Testing
 
-The suite covers registration and login, invalid credentials, expired tokens, refresh-token rotation, role restrictions, task CRUD and assignment, filtering, pagination, sorting, and constraint failures such as duplicate email or deleting a user who still owns tasks.
+The suite covers registration and login, invalid credentials, expired tokens, refresh-token rotation, role restrictions, task CRUD and assignment, filtering, pagination, sorting, and constraint failures such as duplicate email or deleting a user who still owns tasks. It also checks that the web client is served and that the static mount does not shadow API routes.
 
 ## CI
 
@@ -195,7 +244,9 @@ Practical notes:
 - Database credentials and JWT secret come from the environment
 - API error responses do not include stack traces, SQL, or secrets
 - Docker image runs as a non-root user
-- CORS is disabled unless `CORS_ORIGINS` is set explicitly
+- CORS is disabled unless `CORS_ORIGINS` is set explicitly; the bundled client needs no exception because it is same-origin
+- The web client hides actions a role cannot perform, but authorization is enforced by the service layer, never by the UI
+- Known trade-off: the client stores its tokens in `localStorage`, which any script on the page can read
 
 This does not mean the service is “secure” for every threat model. Review secrets handling, TLS, and network exposure before production use.
 
@@ -205,7 +256,8 @@ This does not mean the service is “secure” for every threat model. Review se
 - Organization / team model more precise than `manager_id`
 - Audit log of assignment and status changes
 - Rate limiting on login
-- OpenAPI client generation for a frontend
+- Generated typed API client to replace the hand-written fetch layer
+- Cookie-based sessions so the browser client does not keep tokens in `localStorage`
 
 ## License
 

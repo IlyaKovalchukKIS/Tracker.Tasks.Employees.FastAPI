@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY alembic.ini .
 COPY migrations ./migrations
 COPY src ./src
+COPY frontend ./frontend
 COPY docker/entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh && chown -R appuser:appuser /app /entrypoint.sh

@@ -6,12 +6,14 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -21,6 +23,8 @@ from src.repositories.db_helper import db_helper
 from src.routing import auth_router, employees_router, task_router, users_router
 
 logger = logging.getLogger("tracker")
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -214,3 +218,12 @@ def custom_openapi() -> dict:
 
 
 app.openapi = custom_openapi
+
+
+# Mounted last so every API route above keeps priority over the static files.
+# The web client uses hash-based routing, so serving index.html at "/" is enough
+# for deep links to work without extra rewrite rules.
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+else:
+    logger.info("Frontend directory not found at %s; serving API only", FRONTEND_DIR)
