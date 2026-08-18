@@ -1,3 +1,8 @@
+"""Task authorization and workflow rules.
+
+Правила авторизации и жизненного цикла задач.
+"""
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,12 +15,20 @@ from src.schemas.task import TaskCreate, TaskUpdate
 
 
 def can_view_task(user: User, task: Task) -> bool:
+    """Return whether the user may read the task.
+
+    Проверяет, может ли пользователь читать задачу.
+    """
     if user.role in {UserRole.ADMIN, UserRole.MANAGER}:
         return True
     return task.executor_id == user.id
 
 
 def can_manage_task(user: User, task: Task) -> bool:
+    """Return whether the user may update task fields.
+
+    Проверяет, может ли пользователь менять поля задачи.
+    """
     if user.role == UserRole.ADMIN:
         return True
     if user.role == UserRole.MANAGER:
@@ -24,6 +37,10 @@ def can_manage_task(user: User, task: Task) -> bool:
 
 
 def can_delete_task(user: User, task: Task) -> bool:
+    """Return whether the user may delete the task.
+
+    Проверяет, может ли пользователь удалить задачу.
+    """
     if user.role == UserRole.ADMIN:
         return True
     if user.role == UserRole.MANAGER:
@@ -32,6 +49,10 @@ def can_delete_task(user: User, task: Task) -> bool:
 
 
 async def _validate_executor(session: AsyncSession, executor_id: int | None) -> None:
+    """Ensure the assignee exists and is active.
+
+    Проверяет, что исполнитель существует и активен.
+    """
     if executor_id is None:
         return
     executor = await get_user_by_id(session, executor_id)
@@ -42,6 +63,10 @@ async def _validate_executor(session: AsyncSession, executor_id: int | None) -> 
 
 
 async def _validate_parent(session: AsyncSession, parent_id: int | None) -> None:
+    """Ensure the parent task exists when a subtask is created.
+
+    Проверяет, что родительская задача существует при создании подзадачи.
+    """
     if parent_id is None:
         return
     parent = await get_task_by_id(session, parent_id)
@@ -50,6 +75,10 @@ async def _validate_parent(session: AsyncSession, parent_id: int | None) -> None
 
 
 async def create_task(session: AsyncSession, current_user: User, payload: TaskCreate) -> Task:
+    """Create a task owned by the current manager or admin.
+
+    Создаёт задачу от имени текущего менеджера или администратора.
+    """
     if current_user.role not in {UserRole.ADMIN, UserRole.MANAGER}:
         raise ForbiddenError("Only managers and administrators can create tasks")
 
@@ -67,6 +96,10 @@ async def create_task(session: AsyncSession, current_user: User, payload: TaskCr
 
 
 async def get_task(session: AsyncSession, current_user: User, task_id: int) -> Task:
+    """Load one task if the caller is allowed to see it.
+
+    Загружает одну задачу, если вызывающему разрешено её видеть.
+    """
     task = await get_task_by_id(session, task_id)
     if task is None:
         raise NotFoundError("Task not found")
@@ -89,6 +122,10 @@ async def get_tasks(
     search: str | None = None,
     sort: str | None = None,
 ) -> tuple[list[Task], int]:
+    """Return a paginated, filtered task list for the current user.
+
+    Возвращает пагинированный и отфильтрованный список задач для текущего пользователя.
+    """
     return await list_tasks(
         session,
         user=current_user,
@@ -110,6 +147,10 @@ async def update_task(
     task_id: int,
     payload: TaskUpdate,
 ) -> Task:
+    """Update a task according to the caller's role.
+
+    Обновляет задачу в соответствии с ролью вызывающего.
+    """
     task = await get_task(session, current_user, task_id)
     data = payload.model_dump(exclude_unset=True)
 
@@ -142,6 +183,10 @@ async def update_task(
 
 
 async def delete_task(session: AsyncSession, current_user: User, task_id: int) -> None:
+    """Delete a task if the caller is allowed to.
+
+    Удаляет задачу, если вызывающему это разрешено.
+    """
     task = await get_task(session, current_user, task_id)
     if not can_delete_task(current_user, task):
         raise ForbiddenError("Insufficient permissions")

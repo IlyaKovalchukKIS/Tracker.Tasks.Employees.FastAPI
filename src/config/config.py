@@ -1,3 +1,8 @@
+"""Pydantic settings loaded from environment variables.
+
+Настройки Pydantic, загружаемые из переменных окружения.
+"""
+
 from functools import lru_cache
 
 from pydantic import AliasChoices, Field, field_validator
@@ -5,7 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Runtime configuration for the API and database.
+
+    Рабочая конфигурация API и базы данных.
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -38,6 +46,10 @@ class Settings(BaseSettings):
     @field_validator("db_echo", mode="before")
     @classmethod
     def parse_bool(cls, value: object) -> bool:
+        """Parse truthy env strings such as 'true' / '1'.
+
+        Разбирает строковые значения окружения вроде 'true' / '1'.
+        """
         if isinstance(value, bool):
             return value
         if isinstance(value, str):
@@ -46,6 +58,10 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        """Async SQLAlchemy URL for PostgreSQL.
+
+        Асинхронный URL SQLAlchemy для PostgreSQL.
+        """
         return (
             f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
@@ -53,10 +69,18 @@ class Settings(BaseSettings):
 
     @property
     def alembic_database_url(self) -> str:
+        """Sync-compatible database URL for Alembic.
+
+        URL базы для Alembic с поддержкой синхронного драйвера.
+        """
         return f"{self.database_url}?async_fallback=true"
 
     @property
     def cors_origin_list(self) -> list[str]:
+        """CORS origins parsed from a comma-separated string.
+
+        Список CORS origin'ов из строки через запятую.
+        """
         if not self.cors_origins.strip():
             return []
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
@@ -64,6 +88,10 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return a cached Settings instance.
+
+    Возвращает кешированный экземпляр Settings.
+    """
     return Settings()
 
 

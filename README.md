@@ -1,5 +1,7 @@
 # Employee Task Management API
 
+**English** | [Русский](README.ru.md)
+
 REST API for assigning, tracking, and updating employee work. The service is intended for teams that need a single source of truth for tasks, ownership, and progress without a full project-management suite.
 
 ## Problem

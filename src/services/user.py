@@ -1,3 +1,8 @@
+"""User and employee authorization rules.
+
+Правила авторизации для пользователей и сотрудников.
+"""
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,12 +20,20 @@ from src.services.auth import password_helper
 
 
 def _is_in_manager_scope(manager: User, employee: User) -> bool:
+    """Return whether an employee belongs to a manager's scope.
+
+    Проверяет, входит ли сотрудник в зону ответственности менеджера.
+    """
     if employee.role == UserRole.ADMIN:
         return False
     return employee.manager_id == manager.id or employee.id == manager.id
 
 
 async def get_profile(session: AsyncSession, user_id: int) -> User:
+    """Load a user profile or raise NotFoundError.
+
+    Загружает профиль пользователя или поднимает NotFoundError.
+    """
     user = await get_user_by_id(session, user_id)
     if user is None:
         raise NotFoundError("User not found")
@@ -32,6 +45,10 @@ async def update_own_profile(
     current_user: User,
     payload: UserUpdate,
 ) -> User:
+    """Update the current user's email or password.
+
+    Обновляет email или пароль текущего пользователя.
+    """
     data = payload.model_dump(exclude_unset=True)
     if "email" in data and data["email"] != current_user.email:
         existing = await get_user_by_email(session, data["email"])
@@ -46,6 +63,10 @@ async def update_own_profile(
 
 
 async def list_managed_users(session: AsyncSession, current_user: User) -> list[User]:
+    """List users visible to an admin or manager.
+
+    Возвращает пользователей, видимых администратору или менеджеру.
+    """
     if current_user.role == UserRole.ADMIN:
         return await list_users(session)
     if current_user.role == UserRole.MANAGER:
@@ -62,6 +83,10 @@ async def get_visible_user(
     current_user: User,
     user_id: int,
 ) -> User:
+    """Return a user if the caller is allowed to see them.
+
+    Возвращает пользователя, если вызывающему разрешено его видеть.
+    """
     user = await get_user_by_id(session, user_id)
     if user is None:
         raise NotFoundError("User not found")
@@ -80,6 +105,10 @@ async def admin_update_user(
     user_id: int,
     payload: UserAdminUpdate,
 ) -> User:
+    """Change a user's role, manager, or active flag. Admin only.
+
+    Меняет роль, менеджера или флаг активности. Только для администратора.
+    """
     if current_user.role != UserRole.ADMIN:
         raise ForbiddenError("Only administrators can manage roles")
 
@@ -121,6 +150,10 @@ async def admin_delete_user(
     current_user: User,
     user_id: int,
 ) -> None:
+    """Delete a user who does not own tasks. Admin only.
+
+    Удаляет пользователя, у которого нет созданных задач. Только для администратора.
+    """
     if current_user.role != UserRole.ADMIN:
         raise ForbiddenError("Only administrators can delete users")
     if current_user.id == user_id:
@@ -141,6 +174,10 @@ async def admin_delete_user(
 
 
 async def list_employees(session: AsyncSession, current_user: User) -> list[User]:
+    """List non-admin users in the caller's management scope.
+
+    Возвращает пользователей без роли ADMIN в зоне вызывающего.
+    """
     users = await list_managed_users(session, current_user)
     return [user for user in users if user.role != UserRole.ADMIN]
 
@@ -150,6 +187,10 @@ async def get_employee_detail(
     current_user: User,
     employee_id: int,
 ) -> User:
+    """Return an employee with assigned tasks if the caller may view them.
+
+    Возвращает сотрудника с назначенными задачами, если вызывающему можно его видеть.
+    """
     employee = await get_employee_with_tasks(session, employee_id)
     if employee is None:
         raise NotFoundError("Employee not found")

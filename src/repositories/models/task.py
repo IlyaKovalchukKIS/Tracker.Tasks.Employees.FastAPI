@@ -1,3 +1,8 @@
+"""Task ORM model.
+
+ORM-модель задачи.
+"""
+
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -12,7 +17,10 @@ if TYPE_CHECKING:
 
 
 class Task(TimestampMixin, Base):
-    """Work item created by a manager or admin and optionally assigned to an employee."""
+    """Work item created by a manager or admin and optionally assigned to an employee.
+
+    Рабочий элемент, созданный менеджером или администратором и при необходимости назначенный сотруднику.
+    """
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)

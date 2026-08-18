@@ -1,3 +1,8 @@
+"""Employee HTTP endpoints.
+
+HTTP-эндпоинты сотрудников.
+"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +27,10 @@ async def list_employees(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
 ) -> list[User]:
+    """List employees in the caller's management scope.
+
+    Возвращает сотрудников в зоне ответственности вызывающего.
+    """
     return await user_service.list_employees(session, user)
 
 
@@ -37,4 +46,8 @@ async def get_employee(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> User:
+    """Return an employee and their assigned tasks.
+
+    Возвращает сотрудника и назначенные ему задачи.
+    """
     return await user_service.get_employee_detail(session, user, employee_id)

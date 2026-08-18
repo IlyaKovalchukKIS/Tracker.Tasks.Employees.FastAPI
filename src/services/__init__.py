@@ -1,1 +1,4 @@
-"""Business logic services."""
+"""Business logic services.
+
+Сервисный слой с бизнес-логикой.
+"""

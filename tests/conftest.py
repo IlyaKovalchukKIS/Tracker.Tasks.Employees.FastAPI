@@ -1,3 +1,8 @@
+"""Pytest fixtures and helpers.
+
+Фикстуры и хелперы Pytest.
+"""
+
 import os
 from collections.abc import AsyncGenerator
 from uuid import uuid4
@@ -25,11 +30,19 @@ TEST_PASSWORD = "password123"
 
 
 def unique_email(prefix: str = "user") -> str:
+    """Build a unique test email address.
+
+    Собирает уникальный тестовый email.
+    """
     return f"{prefix}-{uuid4().hex[:10]}@example.com"
 
 
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
+    """Provide an isolated in-memory SQLite session.
+
+    Отдаёт изолированную in-memory сессию SQLite.
+    """
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -47,7 +60,15 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """HTTP client bound to the test database session.
+
+    HTTP-клиент, привязанный к тестовой сессии БД.
+    """
     async def override_session() -> AsyncGenerator[AsyncSession, None]:
+        """Yield the shared test session to FastAPI.
+
+        Отдаёт общую тестовую сессию в FastAPI.
+        """
         yield session
 
     app.dependency_overrides[db_helper.session_dependency] = override_session
@@ -58,6 +79,10 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 async def register_user(client: AsyncClient, email: str | None = None) -> dict:
+    """Register a user and return id, email, password, and role.
+
+    Регистрирует пользователя и возвращает id, email, пароль и роль.
+    """
     payload = {"email": email or unique_email(), "password": TEST_PASSWORD}
     response = await client.post("/auth/register", json=payload)
     assert response.status_code == 201, response.text
@@ -66,6 +91,10 @@ async def register_user(client: AsyncClient, email: str | None = None) -> dict:
 
 
 async def login_user(client: AsyncClient, email: str, password: str = TEST_PASSWORD) -> dict:
+    """Log in and return tokens plus an Authorization header.
+
+    Выполняет вход и возвращает токены плюс заголовок Authorization.
+    """
     response = await client.post("/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
     tokens = response.json()
@@ -78,6 +107,10 @@ async def login_user(client: AsyncClient, email: str, password: str = TEST_PASSW
 
 @pytest.fixture
 async def admin(client: AsyncClient) -> dict:
+    """First registered user, which becomes ADMIN.
+
+    Первый зарегистрированный пользователь, который становится ADMIN.
+    """
     user = await register_user(client, unique_email("admin"))
     tokens = await login_user(client, user["email"])
     return {**user, **tokens}
@@ -85,6 +118,10 @@ async def admin(client: AsyncClient) -> dict:
 
 @pytest.fixture
 async def manager(client: AsyncClient, admin: dict) -> dict:
+    """Registered user promoted to MANAGER by the admin.
+
+    Зарегистрированный пользователь, которого админ повысил до MANAGER.
+    """
     user = await register_user(client, unique_email("manager"))
     response = await client.patch(
         f"/users/{user['id']}",
@@ -98,6 +135,10 @@ async def manager(client: AsyncClient, admin: dict) -> dict:
 
 @pytest.fixture
 async def employee(client: AsyncClient, admin: dict) -> dict:
+    """Registered user who remains EMPLOYEE.
+
+    Зарегистрированный пользователь с ролью EMPLOYEE.
+    """
     user = await register_user(client, unique_email("employee"))
     tokens = await login_user(client, user["email"])
     return {**user, **tokens}

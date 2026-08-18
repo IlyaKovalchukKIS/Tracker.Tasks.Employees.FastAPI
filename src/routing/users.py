@@ -1,3 +1,8 @@
+"""User HTTP endpoints.
+
+HTTP-эндпоинты пользователей.
+"""
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +24,10 @@ users_router = APIRouter(prefix="/users", tags=["Users"])
     description="Return the authenticated user's profile.",
 )
 async def read_me(user: User = Depends(current_active_user)) -> User:
+    """Return the authenticated user's profile.
+
+    Возвращает профиль текущего пользователя.
+    """
     return user
 
 
@@ -34,6 +43,10 @@ async def update_me(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> User:
+    """Update the current user's email or password.
+
+    Обновляет email или пароль текущего пользователя.
+    """
     return await user_service.update_own_profile(session, user, payload)
 
 
@@ -47,6 +60,10 @@ async def list_users(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
 ) -> list[User]:
+    """List users visible to an admin or manager.
+
+    Возвращает пользователей, видимых администратору или менеджеру.
+    """
     return await user_service.list_managed_users(session, user)
 
 
@@ -61,6 +78,10 @@ async def get_user(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> User:
+    """Get a user by id if the caller may see them.
+
+    Возвращает пользователя по id, если вызывающему можно его видеть.
+    """
     return await user_service.get_visible_user(session, user, user_id)
 
 
@@ -76,6 +97,10 @@ async def update_user(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> User:
+    """Update a user's role, manager, or active flag.
+
+    Обновляет роль, менеджера или флаг активности пользователя.
+    """
     return await user_service.admin_update_user(session, user, user_id, payload)
 
 
@@ -95,4 +120,8 @@ async def delete_user(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> None:
+    """Delete a user who does not own tasks.
+
+    Удаляет пользователя, у которого нет созданных задач.
+    """
     await user_service.admin_delete_user(session, user, user_id)

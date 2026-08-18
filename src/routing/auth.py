@@ -1,3 +1,8 @@
+"""Authentication HTTP endpoints.
+
+HTTP-эндпоинты аутентификации.
+"""
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +40,10 @@ async def register(
     payload: UserCreate,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> User:
+    """Register a new account.
+
+    Регистрирует новую учётную запись.
+    """
     return await auth_service.register_user(session, payload)
 
 
@@ -52,6 +61,10 @@ async def login(
     payload: UserLogin,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> TokenPair:
+    """Authenticate and return access plus refresh tokens.
+
+    Аутентифицирует и возвращает access- и refresh-токены.
+    """
     return await auth_service.login_user(session, payload)
 
 
@@ -69,6 +82,10 @@ async def refresh(
     payload: RefreshRequest,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> TokenPair:
+    """Exchange a refresh token for a new token pair.
+
+    Обменивает refresh-токен на новую пару токенов.
+    """
     return await auth_service.refresh_tokens(session, payload.refresh_token)
 
 
@@ -82,4 +99,8 @@ async def logout(
     payload: LogoutRequest,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> None:
+    """Revoke the provided refresh token.
+
+    Отзывает переданный refresh-токен.
+    """
     await auth_service.logout_user(session, payload.refresh_token)

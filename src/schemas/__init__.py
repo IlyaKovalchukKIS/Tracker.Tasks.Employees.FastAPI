@@ -1,3 +1,8 @@
+"""Pydantic request and response schemas.
+
+Pydantic-схемы запросов и ответов.
+"""
+
 from .employee import EmployeeDetail, EmployeeRead
 from .task import TaskCreate, TaskListResponse, TaskRead, TaskStatusUpdate, TaskUpdate
 from .user import (

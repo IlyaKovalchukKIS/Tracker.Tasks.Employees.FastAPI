@@ -1,3 +1,8 @@
+"""Application settings.
+
+Настройки приложения.
+"""
+
 from .config import Settings, get_settings, settings
 
 __all__ = (

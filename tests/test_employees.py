@@ -1,3 +1,8 @@
+"""Employee directory tests.
+
+Тесты справочника сотрудников.
+"""
+
 import pytest
 from httpx import AsyncClient
 
@@ -7,6 +12,10 @@ async def test_employee_directory_hidden_from_employee(
     client: AsyncClient,
     employee: dict,
 ) -> None:
+    """Employees cannot list the employee directory.
+
+    Сотрудники не могут получить справочник сотрудников.
+    """
     response = await client.get("/employees", headers=employee["headers"])
     assert response.status_code == 403
 
@@ -17,6 +26,10 @@ async def test_manager_can_list_employees(
     manager: dict,
     employee: dict,
 ) -> None:
+    """A manager can list employees.
+
+    Менеджер может получить список сотрудников.
+    """
     response = await client.get("/employees", headers=manager["headers"])
     assert response.status_code == 200
     ids = {item["id"] for item in response.json()}
@@ -29,6 +42,10 @@ async def test_employee_can_view_own_employee_record(
     manager: dict,
     employee: dict,
 ) -> None:
+    """An employee can view their own employee record and assigned tasks.
+
+    Сотрудник может посмотреть свою карточку и назначенные задачи.
+    """
     await client.post(
         "/tasks",
         json={

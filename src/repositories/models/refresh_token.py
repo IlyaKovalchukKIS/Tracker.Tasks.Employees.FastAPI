@@ -1,3 +1,8 @@
+"""Refresh token ORM model.
+
+ORM-модель refresh-токена.
+"""
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
@@ -8,7 +13,10 @@ from .user import User
 
 
 class RefreshToken(Base):
-    """Hashed refresh token used to issue new access tokens."""
+    """Hashed refresh token used to issue new access tokens.
+
+    Хешированный refresh-токен для выдачи новых access-токенов.
+    """
 
     __tablename__ = "refresh_token"
 

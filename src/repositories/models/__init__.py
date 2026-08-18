@@ -1,3 +1,8 @@
+"""SQLAlchemy models.
+
+Модели SQLAlchemy.
+"""
+
 from src.repositories.models.base import Base, TimestampMixin
 from src.repositories.models.enums import TaskPriority, TaskStatus, UserRole
 from src.repositories.models.refresh_token import RefreshToken

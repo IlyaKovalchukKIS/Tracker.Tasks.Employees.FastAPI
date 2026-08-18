@@ -1,3 +1,8 @@
+"""Task query helpers: filters, sorting, pagination.
+
+Хелперы запросов задач: фильтры, сортировка, пагинация.
+"""
+
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -42,6 +47,10 @@ def apply_task_filters(
     unassigned: bool | None = None,
     search: str | None = None,
 ) -> Select:
+    """Apply optional status, priority, assignee, and search filters.
+
+    Применяет необязательные фильтры статуса, приоритета, исполнителя и поиска.
+    """
     if status is not None:
         stmt = stmt.where(Task.status == status)
     if priority is not None:
@@ -61,12 +70,20 @@ def apply_task_filters(
 
 
 def apply_task_visibility(stmt: Select, user: User) -> Select:
+    """Restrict employees to tasks assigned to them.
+
+    Ограничивает сотрудников задачами, назначенными на них.
+    """
     if user.role == UserRole.EMPLOYEE:
         return stmt.where(Task.executor_id == user.id)
     return stmt
 
 
 def apply_sorting(stmt: Select, sort: str | None) -> Select:
+    """Sort by an allow-listed field. Prefix '-' for descending order.
+
+    Сортирует по разрешённому полю. Префикс '-' означает убывание.
+    """
     raw = (sort or "-created_at").strip()
     descending = raw.startswith("-")
     field_name = raw.lstrip("+-") or "created_at"
@@ -83,6 +100,10 @@ def apply_sorting(stmt: Select, sort: str | None) -> Select:
 
 
 async def get_task_by_id(session: AsyncSession, task_id: int) -> Task | None:
+    """Load a task by primary key.
+
+    Загружает задачу по первичному ключу.
+    """
     return await session.get(Task, task_id)
 
 
@@ -100,6 +121,10 @@ async def list_tasks(
     search: str | None = None,
     sort: str | None = None,
 ) -> tuple[list[Task], int]:
+    """Return a page of visible tasks and the total matching count.
+
+    Возвращает страницу видимых задач и общее число совпадений.
+    """
     stmt = select(Task)
     stmt = apply_task_visibility(stmt, user)
     stmt = apply_task_filters(

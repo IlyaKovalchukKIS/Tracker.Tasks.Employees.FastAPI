@@ -1,3 +1,8 @@
+"""FastAPI application, exception handlers, and OpenAPI setup.
+
+Приложение FastAPI, обработчики ошибок и настройка OpenAPI.
+"""
+
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -48,6 +53,10 @@ TAGS_METADATA = [
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Validate secrets on startup and dispose the DB engine on shutdown.
+
+    Проверяет секреты при старте и закрывает engine БД при остановке.
+    """
     if len(settings.jwt_secret) < 16:
         raise RuntimeError("JWT_SECRET must be set to a random string of at least 16 characters")
     yield
@@ -80,6 +89,10 @@ if settings.cors_origin_list:
 
 @app.exception_handler(AppError)
 async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
+    """Serialize domain errors as JSON.
+
+    Преобразует доменные ошибки в JSON.
+    """
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
@@ -88,6 +101,10 @@ async def validation_error_handler(
     _request: Request,
     exc: RequestValidationError,
 ) -> JSONResponse:
+    """Return FastAPI validation errors without internals.
+
+    Возвращает ошибки валидации FastAPI без внутренней информации.
+    """
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.errors()},
@@ -96,6 +113,10 @@ async def validation_error_handler(
 
 @app.exception_handler(IntegrityError)
 async def integrity_error_handler(_request: Request, exc: IntegrityError) -> JSONResponse:
+    """Map unique/FK constraint violations to HTTP 409.
+
+    Преобразует нарушения unique/FK-ограничений в HTTP 409.
+    """
     logger.warning("Database constraint violation: %s", exc.__class__.__name__)
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -105,6 +126,10 @@ async def integrity_error_handler(_request: Request, exc: IntegrityError) -> JSO
 
 @app.exception_handler(SQLAlchemyError)
 async def database_error_handler(_request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    """Hide unexpected database errors from the client.
+
+    Скрывает неожиданные ошибки базы от клиента.
+    """
     logger.exception("Database error")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -117,11 +142,19 @@ async def http_exception_handler(
     _request: Request,
     exc: StarletteHTTPException,
 ) -> JSONResponse:
+    """Keep HTTPException responses in the same JSON shape.
+
+    Сохраняет тот же JSON-формат для HTTPException.
+    """
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """Log unexpected errors and return a generic 500.
+
+    Логирует неожиданные ошибки и возвращает общий 500.
+    """
     if isinstance(exc, HTTPException | StarletteHTTPException | AppError):
         raise exc
     logger.exception("Unhandled application error")
@@ -133,6 +166,10 @@ async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResp
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:
+    """Liveness probe for Docker and load balancers.
+
+    Проверка живости для Docker и балансировщиков.
+    """
     return {"status": "ok"}
 
 
@@ -143,6 +180,10 @@ app.include_router(task_router)
 
 
 def custom_openapi() -> dict:
+    """Attach Bearer JWT security to protected OpenAPI paths.
+
+    Добавляет Bearer JWT в OpenAPI для защищённых путей.
+    """
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = get_openapi(

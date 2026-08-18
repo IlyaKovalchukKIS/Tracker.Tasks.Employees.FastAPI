@@ -1,3 +1,8 @@
+"""Task HTTP endpoints.
+
+HTTP-эндпоинты задач.
+"""
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +39,10 @@ async def list_tasks(
     search: str | None = Query(None, min_length=1, max_length=100),
     sort: str = Query("-created_at", description="Sort field. Prefix with '-' for descending order."),
 ) -> TaskListResponse:
+    """List tasks with pagination, filters, sorting, and search.
+
+    Возвращает задачи с пагинацией, фильтрами, сортировкой и поиском.
+    """
     items, total = await task_service.get_tasks(
         session,
         user,
@@ -61,6 +70,10 @@ async def get_task(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> Task:
+    """Get a single task by id.
+
+    Возвращает одну задачу по id.
+    """
     return await task_service.get_task(session, user, task_id)
 
 
@@ -77,6 +90,10 @@ async def create_task(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
 ) -> Task:
+    """Create a task. Managers and administrators only.
+
+    Создаёт задачу. Только для менеджеров и администраторов.
+    """
     return await task_service.create_task(session, user, payload)
 
 
@@ -95,6 +112,10 @@ async def update_task(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> Task:
+    """Update a task. Employees may change only the status of assigned tasks.
+
+    Обновляет задачу. Сотрудник может менять только статус назначенных ему задач.
+    """
     return await task_service.update_task(session, user, task_id, payload)
 
 
@@ -109,4 +130,8 @@ async def delete_task(
     session: AsyncSession = Depends(db_helper.session_dependency),
     user: User = Depends(current_active_user),
 ) -> None:
+    """Delete a task according to the caller's role.
+
+    Удаляет задачу в соответствии с ролью вызывающего.
+    """
     await task_service.delete_task(session, user, task_id)

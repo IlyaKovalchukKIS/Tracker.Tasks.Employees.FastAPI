@@ -1,3 +1,8 @@
+"""Database constraint and relationship tests.
+
+Тесты ограничений и связей базы данных.
+"""
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -9,6 +14,10 @@ from tests.test_tasks import create_task
 
 @pytest.mark.asyncio
 async def test_user_email_is_unique(client: AsyncClient, session: AsyncSession) -> None:
+    """Email uniqueness is enforced.
+
+    Уникальность email соблюдается.
+    """
     user = await register_user(client)
     users = (await session.execute(select(User).where(User.email == user["email"]))).scalars().all()
     assert len(users) == 1
@@ -20,6 +29,10 @@ async def test_task_owner_relationship(
     manager: dict,
     session: AsyncSession,
 ) -> None:
+    """A created task stores the manager as owner.
+
+    Созданная задача сохраняет менеджера как владельца.
+    """
     created = await create_task(client, manager["headers"], title="Owned task")
     task = await session.get(Task, created["id"])
     assert task is not None
@@ -33,6 +46,10 @@ async def test_cannot_delete_user_who_owns_tasks(
     admin: dict,
     manager: dict,
 ) -> None:
+    """A user who still owns tasks cannot be deleted.
+
+    Пользователя, у которого ещё есть созданные задачи, удалить нельзя.
+    """
     await create_task(client, manager["headers"], title="Blocking task")
     response = await client.delete(f"/users/{manager['id']}", headers=admin["headers"])
     assert response.status_code == 409
@@ -40,6 +57,10 @@ async def test_cannot_delete_user_who_owns_tasks(
 
 @pytest.mark.asyncio
 async def test_subtask_parent_must_exist(client: AsyncClient, manager: dict) -> None:
+    """A missing parent_id is rejected with 404.
+
+    Несуществующий parent_id отклоняется с 404.
+    """
     response = await client.post(
         "/tasks",
         json={

@@ -1,3 +1,8 @@
+"""User permission tests.
+
+Тесты прав пользователей.
+"""
+
 import pytest
 from httpx import AsyncClient
 from tests.conftest import login_user, unique_email
@@ -5,12 +10,20 @@ from tests.conftest import login_user, unique_email
 
 @pytest.mark.asyncio
 async def test_employee_cannot_list_users(client: AsyncClient, employee: dict) -> None:
+    """Employees cannot list all users.
+
+    Сотрудники не могут получить список всех пользователей.
+    """
     response = await client.get("/users", headers=employee["headers"])
     assert response.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_admin_can_list_users(client: AsyncClient, admin: dict, employee: dict) -> None:
+    """Admins can see every registered user.
+
+    Администраторы видят всех зарегистрированных пользователей.
+    """
     response = await client.get("/users", headers=admin["headers"])
     assert response.status_code == 200
     emails = {item["email"] for item in response.json()}
@@ -20,6 +33,10 @@ async def test_admin_can_list_users(client: AsyncClient, admin: dict, employee: 
 
 @pytest.mark.asyncio
 async def test_employee_can_read_own_profile(client: AsyncClient, employee: dict) -> None:
+    """An employee can read their own profile.
+
+    Сотрудник может прочитать свой профиль.
+    """
     response = await client.get("/users/me", headers=employee["headers"])
     assert response.status_code == 200
     assert response.json()["id"] == employee["id"]
@@ -32,6 +49,10 @@ async def test_employee_cannot_read_another_user(
     admin: dict,
     employee: dict,
 ) -> None:
+    """An employee cannot read another user's profile.
+
+    Сотрудник не может прочитать профиль другого пользователя.
+    """
     response = await client.get(f"/users/{admin['id']}", headers=employee["headers"])
     assert response.status_code == 403
 
@@ -42,6 +63,10 @@ async def test_employee_cannot_change_roles(
     employee: dict,
     manager: dict,
 ) -> None:
+    """An employee cannot promote themselves.
+
+    Сотрудник не может повысить себе роль.
+    """
     response = await client.patch(
         f"/users/{employee['id']}",
         json={"role": "ADMIN"},
@@ -60,6 +85,10 @@ async def test_admin_can_assign_manager_and_role(
     manager: dict,
     employee: dict,
 ) -> None:
+    """An admin can assign a manager to an employee.
+
+    Администратор может назначить менеджера сотруднику.
+    """
     response = await client.patch(
         f"/users/{employee['id']}",
         json={"manager_id": manager["id"]},
@@ -71,12 +100,20 @@ async def test_admin_can_assign_manager_and_role(
 
 @pytest.mark.asyncio
 async def test_nonexistent_user_returns_404(client: AsyncClient, admin: dict) -> None:
+    """Missing user ids return 404.
+
+    Несуществующие id пользователей возвращают 404.
+    """
     response = await client.get("/users/999999", headers=admin["headers"])
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_update_own_profile_email(client: AsyncClient, employee: dict) -> None:
+    """A user can change their own email.
+
+    Пользователь может сменить свой email.
+    """
     new_email = unique_email("renamed")
     response = await client.patch(
         "/users/me",
@@ -89,12 +126,20 @@ async def test_update_own_profile_email(client: AsyncClient, employee: dict) -> 
 
 @pytest.mark.asyncio
 async def test_admin_cannot_delete_self(client: AsyncClient, admin: dict) -> None:
+    """An admin cannot delete their own account.
+
+    Администратор не может удалить свою учётную запись.
+    """
     response = await client.delete(f"/users/{admin['id']}", headers=admin["headers"])
     assert response.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_login_after_password_change(client: AsyncClient, employee: dict) -> None:
+    """The new password works after a profile update.
+
+    Новый пароль работает после обновления профиля.
+    """
     new_password = "newpass123"
     response = await client.patch(
         "/users/me",

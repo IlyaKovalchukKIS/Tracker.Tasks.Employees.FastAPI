@@ -1,5 +1,7 @@
 """Add roles, task workflow fields, refresh tokens, and indexes.
 
+Добавляет роли, поля жизненного цикла задач, refresh-токены и индексы.
+
 Revision ID: 7b2e9c4a1f10
 Revises: 06c404d1de76
 Create Date: 2026-08-18 21:00:00.000000
@@ -19,6 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Add role, workflow, refresh-token, and index columns.
+
+    Добавляет роли, поля workflow, refresh-токены и индексы.
+    """
     op.add_column(
         "user",
         sa.Column("role", sa.String(length=20), nullable=False, server_default="EMPLOYEE"),
@@ -136,6 +142,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert role, workflow, refresh-token, and index changes.
+
+    Откатывает роли, поля workflow, refresh-токены и индексы.
+    """
     op.drop_index("ix_refresh_token_token_hash", table_name="refresh_token")
     op.drop_index("ix_refresh_token_user_id", table_name="refresh_token")
     op.drop_table("refresh_token")

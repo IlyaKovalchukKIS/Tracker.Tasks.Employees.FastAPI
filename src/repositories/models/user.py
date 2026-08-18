@@ -1,3 +1,8 @@
+"""User ORM model.
+
+ORM-модель пользователя.
+"""
+
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -14,7 +19,10 @@ if TYPE_CHECKING:
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):
-    """Application user. Also represents an employee in this domain."""
+    """Application user. Also represents an employee in this domain.
+
+    Пользователь приложения. В этой предметной области также является сотрудником.
+    """
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     role: Mapped[UserRole] = mapped_column(

@@ -1,3 +1,8 @@
+"""Task request and response schemas.
+
+Схемы запросов и ответов для задач.
+"""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -6,6 +11,10 @@ from src.repositories.models.enums import TaskPriority, TaskStatus
 
 
 class TaskCreate(BaseModel):
+    """Payload for creating a task.
+
+    Тело запроса создания задачи.
+    """
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
@@ -30,6 +39,10 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
+    """Partial update of a task.
+
+    Частичное обновление задачи.
+    """
     title: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, min_length=1, max_length=5000)
     status: TaskStatus | None = None
@@ -40,10 +53,18 @@ class TaskUpdate(BaseModel):
 
 
 class TaskStatusUpdate(BaseModel):
+    """Employee-only status change payload.
+
+    Тело запроса смены статуса, доступное сотруднику.
+    """
     status: TaskStatus
 
 
 class TaskRead(BaseModel):
+    """Task representation returned by the API.
+
+    Представление задачи, которое отдаёт API.
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -60,6 +81,10 @@ class TaskRead(BaseModel):
 
 
 class TaskListResponse(BaseModel):
+    """Paginated list of tasks.
+
+    Пагинированный список задач.
+    """
     items: list[TaskRead]
     page: int
     limit: int
