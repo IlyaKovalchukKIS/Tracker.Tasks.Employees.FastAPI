@@ -1,9 +1,15 @@
-__all__ = (
-    "Task",
-    "User",
-    "Base",
-)
+from src.repositories.models.base import Base
+from src.repositories.models.enums import TaskPriority, TaskStatus, UserRole
+from src.repositories.models.refresh_token import RefreshToken
+from src.repositories.models.task import Task
+from src.repositories.models.user import User
 
-from .task import Task
-from .user import User
-from .base import Base
+__all__ = (
+    "Base",
+    "RefreshToken",
+    "Task",
+    "TaskPriority",
+    "TaskStatus",
+    "User",
+    "UserRole",
+)
