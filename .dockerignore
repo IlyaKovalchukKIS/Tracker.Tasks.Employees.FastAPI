@@ -1,3 +1,14 @@
-poetry.lock
+.git
+.github
+.idea
+.venv
 .env
-postgres_data/
+__pycache__
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+tests
+postgres_data
+*.md
+images

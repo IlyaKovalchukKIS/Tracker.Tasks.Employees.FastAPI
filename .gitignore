@@ -1,4 +1,14 @@
 postgres_data/
-poetry.lock
 .idea/
 .env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
