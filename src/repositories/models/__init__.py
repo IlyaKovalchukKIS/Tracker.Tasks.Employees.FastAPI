@@ -1,4 +1,4 @@
-from src.repositories.models.base import Base
+from src.repositories.models.base import Base, TimestampMixin
 from src.repositories.models.enums import TaskPriority, TaskStatus, UserRole
 from src.repositories.models.refresh_token import RefreshToken
 from src.repositories.models.task import Task
@@ -10,6 +10,7 @@ __all__ = (
     "Task",
     "TaskPriority",
     "TaskStatus",
+    "TimestampMixin",
     "User",
     "UserRole",
 )

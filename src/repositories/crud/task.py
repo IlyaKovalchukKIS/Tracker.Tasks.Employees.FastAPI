@@ -1,83 +1,121 @@
-from sqlalchemy import select, Result
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from src.repositories.models.task import Task
-from src.repositories.models.user import User
-from src.schemas.task import TaskCreateSchemas
+from sqlalchemy.sql import Select
+
+from src.repositories.models import Task, User
+from src.repositories.models.enums import TaskPriority, TaskStatus, UserRole
+
+ALLOWED_SORT_FIELDS = {
+    "id",
+    "title",
+    "status",
+    "priority",
+    "deadline",
+    "created_at",
+    "updated_at",
+}
+
+PRIORITY_ORDER = case(
+    (Task.priority == TaskPriority.LOW, 1),
+    (Task.priority == TaskPriority.MEDIUM, 2),
+    (Task.priority == TaskPriority.HIGH, 3),
+    (Task.priority == TaskPriority.CRITICAL, 4),
+    else_=0,
+)
+
+STATUS_ORDER = case(
+    (Task.status == TaskStatus.TODO, 1),
+    (Task.status == TaskStatus.IN_PROGRESS, 2),
+    (Task.status == TaskStatus.DONE, 3),
+    (Task.status == TaskStatus.CANCELLED, 4),
+    else_=0,
+)
 
 
-async def get_all_tasks(session: AsyncSession) -> list[Task]:
-    """Получение всех задач"""
-    stmt = select(Task).order_by(Task.id)
-    result: Result = await session.execute(stmt)
-    tasks = result.scalars().all()
-    return list(tasks)
+def apply_task_filters(
+    stmt: Select,
+    *,
+    status: TaskStatus | None = None,
+    priority: TaskPriority | None = None,
+    employee_id: int | None = None,
+    owner_id: int | None = None,
+    unassigned: bool | None = None,
+    search: str | None = None,
+) -> Select:
+    if status is not None:
+        stmt = stmt.where(Task.status == status)
+    if priority is not None:
+        stmt = stmt.where(Task.priority == priority)
+    if employee_id is not None:
+        stmt = stmt.where(Task.executor_id == employee_id)
+    if owner_id is not None:
+        stmt = stmt.where(Task.owner_id == owner_id)
+    if unassigned is True:
+        stmt = stmt.where(Task.executor_id.is_(None))
+    if search:
+        pattern = f"%{search}%"
+        stmt = stmt.where(
+            or_(Task.title.ilike(pattern), Task.description.ilike(pattern))
+        )
+    return stmt
 
 
-async def get_task(session: AsyncSession, task_id: int) -> Task | None:
-    """Получение задачи по id"""
+def apply_task_visibility(stmt: Select, user: User) -> Select:
+    if user.role == UserRole.EMPLOYEE:
+        return stmt.where(Task.executor_id == user.id)
+    return stmt
+
+
+def apply_sorting(stmt: Select, sort: str | None) -> Select:
+    raw = (sort or "-created_at").strip()
+    descending = raw.startswith("-")
+    field_name = raw.lstrip("+-") or "created_at"
+    if field_name not in ALLOWED_SORT_FIELDS:
+        field_name = "created_at"
+        descending = True
+    if field_name == "priority":
+        column = PRIORITY_ORDER
+    elif field_name == "status":
+        column = STATUS_ORDER
+    else:
+        column = getattr(Task, field_name)
+    return stmt.order_by(column.desc() if descending else column.asc())
+
+
+async def get_task_by_id(session: AsyncSession, task_id: int) -> Task | None:
     return await session.get(Task, task_id)
 
 
-async def get_free_tasks(session: AsyncSession) -> list[Task] | None:
-    """Получене списка свободных задач"""
-    stmt = select(Task).filter(Task.is_active == False).order_by(Task.deadline)
-    result: Result = await session.execute(stmt)
-    return list(result.scalars().all())
+async def list_tasks(
+    session: AsyncSession,
+    *,
+    user: User,
+    page: int,
+    limit: int,
+    status: TaskStatus | None = None,
+    priority: TaskPriority | None = None,
+    employee_id: int | None = None,
+    owner_id: int | None = None,
+    unassigned: bool | None = None,
+    search: str | None = None,
+    sort: str | None = None,
+) -> tuple[list[Task], int]:
+    stmt = select(Task)
+    stmt = apply_task_visibility(stmt, user)
+    stmt = apply_task_filters(
+        stmt,
+        status=status,
+        priority=priority,
+        employee_id=employee_id,
+        owner_id=owner_id,
+        unassigned=unassigned,
+        search=search,
+    )
 
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = int((await session.execute(count_stmt)).scalar_one())
 
-async def create_task(session: AsyncSession, task_in: TaskCreateSchemas, owner_id: int) -> Task:
-    """Создание задачи"""
-    task = task_in.model_dump()
-    task["owner_id"] = owner_id
-    if task["parent_id"] == 0:
-        task.pop("parent_id")
-    if task["executor_id"] != 0 and task["executor_id"] is not None:
-        task["is_active"] = True
-
-    if task["executor_id"] == 0:
-        task.pop("executor_id")
-
-    task = Task(**task)
-    session.add(task)
-    await session.commit()
-    await session.refresh(task)
-    return task
-
-
-async def update_task(
-    session: AsyncSession, task: Task, task_update: TaskCreateSchemas
-) -> Task:
-    """Изменение задачи"""
-    for name, value in task_update.model_dump().items():
-        setattr(task, name, value)
-    await session.commit()
-    return task
-
-
-async def delete_task(
-    session: AsyncSession, task_id: int, owner_id: int
-) -> dict | None:
-    """Удаление задачи по id"""
-    result = await session.get(Task, task_id)
-    if result is not None:
-        if result.owner_id == owner_id:
-            await session.delete(result)
-            await session.commit()
-            return {"detail": "Success delete task"}
-        return {"detail": "User is not owner to task"}
-    return {"detail": f"There is no task with this number {task_id} in the table"}
-
-
-async def get_users_tasks(session: AsyncSession):
-    """Функция получения списка пользователей со списком задач которые они создали"""
-    stmt = select(User).options(selectinload(User.tasks)).order_by(User.id)
-    users = await session.scalars(stmt)
-    return list(users.unique())
-
-
-async def get_users_tasks_executor(session: AsyncSession):
-    """Функция получение списка пользователей со списком назначеннх им задач"""
-    stmt = select(User).options(selectinload(User.executed_tasks)).order_by(User.id)
-    users = await session.scalars(stmt)
-    return list(users.unique())
+    stmt = apply_sorting(stmt, sort)
+    stmt = stmt.offset((page - 1) * limit).limit(limit)
+    result = await session.execute(stmt)
+    return list(result.scalars().all()), total

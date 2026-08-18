@@ -1,50 +1,25 @@
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
-    async_scoped_session,
-    AsyncSession,
-)
-from asyncio import current_task
+from collections.abc import AsyncGenerator
 
-from src.config import DB_URL, DB_ECHO
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from src.config import settings
 
 
 class DatabaseHelper:
-    def __init__(self, url: str, echo: bool = False):
-        """
-        Класс помощник для работы с подключением к базе данных
-
-        :param url: url базы данных указанный в конфиге проекта
-        :param echo: вывод в консоль запросов к базе данных
-        """
-        # Создание движка
-        self.engine = create_async_engine(url=url, echo=echo)
-
-        # Создание асинхронных сессии
+    def __init__(self, url: str, echo: bool = False) -> None:
+        self.engine = create_async_engine(url=url, echo=echo, pool_pre_ping=True)
         self.session_factory = async_sessionmaker(
             bind=self.engine,
             expire_on_commit=False,
             autoflush=False,
         )
 
-    def get_scoped_session(self):
-        session = async_scoped_session(
-            session_factory=self.session_factory,
-            scopefunc=current_task,
-        )
-        return session
-
-    async def session_dependency(self) -> AsyncSession:
-        """
-        Метод для открытия асинхронной сессии
-        :return: AsyncSession
-        """
+    async def session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
         async with self.session_factory() as session:
             yield session
-            await session.close()
+
+    async def dispose(self) -> None:
+        await self.engine.dispose()
 
 
-db_helper = DatabaseHelper(
-    url=DB_URL,
-    echo=DB_ECHO,
-)
+db_helper = DatabaseHelper(url=settings.database_url, echo=settings.db_echo)

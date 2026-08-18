@@ -1,61 +1,46 @@
-from typing import Optional
-
-from fastapi import Depends, Request
-from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin
-from fastapi_users.authentication import (
-    AuthenticationBackend,
-    BearerTransport,
-    JWTStrategy,
-)
-from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.schemas.user import User
-from src.config.config import SECRET_KEY_AUTH
-from src.repositories.db_helper import db_helper
-
-SECRET = SECRET_KEY_AUTH
+from src.repositories.models import User
+from src.repositories.models.enums import UserRole
 
 
-class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
-    reset_password_token_secret = SECRET
-    verification_token_secret = SECRET
-
-    async def on_after_register(self, user: User, request: Optional[Request] = None):
-        print(f"User {user.id} has registered.")
-
-    async def on_after_forgot_password(
-        self, user: User, token: str, request: Optional[Request] = None
-    ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
-
-    async def on_after_request_verify(
-        self, user: User, token: str, request: Optional[Request] = None
-    ):
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
+    return await session.get(User, user_id)
 
 
-async def get_user_db(session: AsyncSession = Depends(db_helper.session_dependency)):
-    yield SQLAlchemyUserDatabase(session, User)
+async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
-async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
-    yield UserManager(user_db)
+async def count_users(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count(User.id)))
+    return int(result.scalar_one())
 
 
-bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+async def list_users(
+    session: AsyncSession,
+    *,
+    role: UserRole | None = None,
+    manager_id: int | None = None,
+) -> list[User]:
+    stmt = select(User).order_by(User.id)
+    if role is not None:
+        stmt = stmt.where(User.role == role)
+    if manager_id is not None:
+        stmt = stmt.where(User.manager_id == manager_id)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
-def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
-
-
-auth_backend = AuthenticationBackend(
-    name="jwt",
-    transport=bearer_transport,
-    get_strategy=get_jwt_strategy,
-)
-
-fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
-
-current_active_user = fastapi_users.current_user(active=True)
+async def get_employee_with_tasks(session: AsyncSession, user_id: int) -> User | None:
+    stmt = (
+        select(User)
+        .options(selectinload(User.executed_tasks))
+        .where(User.id == user_id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
