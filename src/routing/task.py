@@ -1,130 +1,137 @@
-from typing import Annotated, List
+"""Task HTTP endpoints.
 
-from fastapi import APIRouter, HTTPException, status, Depends
+HTTP-эндпоинты задач.
+"""
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.repositories.crud import (
-    get_free_tasks,
-    get_all_tasks,
-    get_task,
-    create_task,
-    update_task,
-    delete_task,
-    get_users_tasks,
-    get_users_tasks_executor,
+from src.auth import current_active_user
+from src.repositories.db_helper import db_helper
+from src.repositories.models import Task, User
+from src.repositories.models.enums import TaskPriority, TaskStatus, UserRole
+from src.routing.deps import require_roles
+from src.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
+from src.services import task as task_service
+
+task_router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+
+@task_router.get(
+    "",
+    response_model=TaskListResponse,
+    summary="List tasks",
+    description=(
+        "List tasks visible to the current user. Employees only see assigned tasks. "
+        "Supports pagination, filtering, sorting, and full-text search on title and description."
+    ),
 )
-from src.repositories.crud.user import fastapi_users
-from src.repositories.models import User
-from src.schemas.task import (
-    TaskCreateSchemas,
-    TaskReadSchemas,
-    UserTaskOwnerSchemas,
-    UserTaskExecutorSchemas,
-)
-from src.repositories import db_helper
+async def list_tasks(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(current_active_user),
+    page: int = Query(1, ge=1, description="Page number, starting from 1"),
+    limit: int = Query(20, ge=1, le=100, description="Page size"),
+    status_filter: TaskStatus | None = Query(None, alias="status"),
+    priority: TaskPriority | None = None,
+    employee_id: int | None = Query(None, description="Filter by assignee"),
+    owner_id: int | None = Query(None, description="Filter by creator"),
+    unassigned: bool | None = Query(None, description="If true, only tasks without an assignee"),
+    search: str | None = Query(None, min_length=1, max_length=100),
+    sort: str = Query("-created_at", description="Sort field. Prefix with '-' for descending order."),
+) -> TaskListResponse:
+    """List tasks with pagination, filters, sorting, and search.
 
-task_router = APIRouter(prefix="/task", tags=["Task"])
-
-current_user = fastapi_users.current_user()
-
-
-@task_router.get("/", response_model=List[TaskReadSchemas])
-async def get_all_tasks_router(
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
+    Возвращает задачи с пагинацией, фильтрами, сортировкой и поиском.
     """
-    Эндпоинт получения всех задач
-    """
-    return await get_all_tasks(session=session)
-
-
-@task_router.get("/free/", response_model=List[TaskReadSchemas])
-async def get_free_tasks_router(
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
-    """
-    Эндпоинт получения списка свободных задач
-    """
-    return await get_free_tasks(session=session)
-
-
-@task_router.get("/{task_id}/", response_model=TaskReadSchemas)
-async def get_task_router(
-        task_id: int,
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
-    """
-    Эндпоинт получения задач по id
-    """
-    task = await get_task(task_id=task_id, session=session)
-    if task is not None:
-        return task
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Task {task_id} not found",
+    items, total = await task_service.get_tasks(
+        session,
+        user,
+        page=page,
+        limit=limit,
+        status=status_filter,
+        priority=priority,
+        employee_id=employee_id,
+        owner_id=owner_id,
+        unassigned=unassigned,
+        search=search,
+        sort=sort,
     )
+    return TaskListResponse(items=items, page=page, limit=limit, total=total)
 
 
-@task_router.post("/", response_model=TaskReadSchemas)
-async def create_task_router(
-        task_in: Annotated[TaskCreateSchemas, Depends()],
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
+@task_router.get(
+    "/{task_id}",
+    response_model=TaskRead,
+    summary="Get task",
+    responses={404: {"description": "Task not found"}},
+)
+async def get_task(
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(current_active_user),
+) -> Task:
+    """Get a single task by id.
+
+    Возвращает одну задачу по id.
     """
-    Эндпоинт создания задачи
-    """
-    return await create_task(task_in=task_in, session=session, owner_id=user.id)
+    return await task_service.get_task(session, user, task_id)
 
 
-@task_router.put("/update/{task_id}/")
-async def update_task_router(
-        task_update: Annotated[TaskCreateSchemas, Depends()],
-        task_id: int,
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
-    """
-    Эндпоинт изменения задачи
+@task_router.post(
+    "",
+    response_model=TaskRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create task",
+    description="Managers and administrators can create tasks and optionally assign them.",
+    responses={403: {"description": "Forbidden"}, 404: {"description": "Assignee not found"}},
+)
+async def create_task(
+    payload: TaskCreate,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
+) -> Task:
+    """Create a task. Managers and administrators only.
 
+    Создаёт задачу. Только для менеджеров и администраторов.
     """
-    task = await get_task(task_id=task_id, session=session)
-    result = await update_task(task=task, session=session, task_update=task_update)
-    return result
-
-
-@task_router.delete("/delete/")
-async def delete_task_router(
-        task_id: int,
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
-    """
-    Эндпоинт удаления задачи
-    """
-    return await delete_task(owner_id=user.id, task_id=task_id, session=session)
+    return await task_service.create_task(session, user, payload)
 
 
-@task_router.get("/tasks/owner/", response_model=List[UserTaskOwnerSchemas])
-async def get_users_tasks_router(
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
+@task_router.patch(
+    "/{task_id}",
+    response_model=TaskRead,
+    summary="Update task",
+    description=(
+        "Administrators and managers can update task fields. "
+        "Employees may only change the status of tasks assigned to them."
+    ),
+)
+async def update_task(
+    task_id: int,
+    payload: TaskUpdate,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(current_active_user),
+) -> Task:
+    """Update a task. Employees may change only the status of assigned tasks.
+
+    Обновляет задачу. Сотрудник может менять только статус назначенных ему задач.
     """
-    Эндпоинт получения списка пользователей с созданными ими задачами
-    """
-    return await get_users_tasks(session=session)
+    return await task_service.update_task(session, user, task_id, payload)
 
 
-@task_router.get("/tasks/executor/", response_model=List[UserTaskExecutorSchemas])
-async def get_users_tasks_executor_router(
-        session: AsyncSession = Depends(db_helper.session_dependency),
-        user: User = Depends(current_user),
-):
+@task_router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete task",
+    description="Administrators can delete any task. Managers can delete tasks they created.",
+)
+async def delete_task(
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(current_active_user),
+) -> None:
+    """Delete a task according to the caller's role.
+
+    Удаляет задачу в соответствии с ролью вызывающего.
     """
-    Эндпоинт получения списка пользователей с назначенными им задачами
-    """
-    return await get_users_tasks_executor(session=session)
+    await task_service.delete_task(session, user, task_id)

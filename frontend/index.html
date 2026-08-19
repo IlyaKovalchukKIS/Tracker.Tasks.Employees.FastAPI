@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1017" media="(prefers-color-scheme: dark)" />
+    <title>Task Tracker</title>
+    <meta
+      name="description"
+      content="Web client for the Employee Task Management API: assign, track, and update team work."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235457e5'/><path d='M9 16.5l4.5 4.5L23 11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script>
+      // Applied before the first paint so the stored theme does not flash.
+      try {
+        const stored = localStorage.getItem('tracker.theme');
+        const theme =
+          stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        const locale = localStorage.getItem('tracker.locale');
+        if (locale) document.documentElement.lang = locale;
+      } catch (error) {
+        /* private mode without storage: fall back to defaults */
+      }
+    </script>
+  </head>
+  <body data-layout="app">
+    <a class="skip-link" href="#main" data-i18n="a11y.skipToContent">Skip to main content</a>
+
+    <div id="header-root"></div>
+
+    <main id="main" class="main" tabindex="-1">
+      <div class="page-loader" aria-hidden="true"><span class="spinner"></span></div>
+    </main>
+
+    <div id="toast-root" class="toast-stack" role="status" aria-live="polite" aria-atomic="false"></div>
+    <div id="modal-root"></div>
+
+    <noscript>
+      <div class="noscript">
+        This application requires JavaScript. / Для работы приложения нужен JavaScript.
+      </div>
+    </noscript>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

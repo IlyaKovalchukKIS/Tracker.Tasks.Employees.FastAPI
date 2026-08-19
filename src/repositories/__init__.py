@@ -1,3 +1,8 @@
-__all__ = ("db_helper",)
+"""Database session helper package.
 
-from .db_helper import db_helper
+Пакет хелпера сессии базы данных.
+"""
+
+from src.repositories.db_helper import db_helper
+
+__all__ = ("db_helper",)

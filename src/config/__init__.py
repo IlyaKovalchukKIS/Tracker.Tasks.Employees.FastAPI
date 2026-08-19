@@ -1,12 +1,12 @@
-__all__ = (
-    "SECRET_KEY_AUTH",
-    "DB_NAME",
-    "DB_PASSWORD",
-    "DB_HOST",
-    "DB_PORT",
-    "DB_ECHO",
-    "DB_USER",
-    "DB_URL",
-)
+"""Application settings.
 
-from .config import *
+Настройки приложения.
+"""
+
+from .config import Settings, get_settings, settings
+
+__all__ = (
+    "Settings",
+    "get_settings",
+    "settings",
+)
