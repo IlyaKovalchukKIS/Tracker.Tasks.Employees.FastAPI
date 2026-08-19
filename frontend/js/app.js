@@ -1,260 +1,70 @@
 /**
- * Application shell: hash router, header, language and theme switchers.
+ * Application entry point: routes, access guards, and session lifecycle.
  */
 
-import { auth, isAuthenticated, setSessionExpiredHandler, users as usersApi } from './api.js';
-import { invalidateDirectory, primeUser } from './directory.js';
-import { LOCALES, getLocale, onLocaleChange, setLocale, t, translateDocument } from './i18n.js';
-import { clearUser, getUser, setUser } from './session.js';
-import {
-  avatar,
-  button,
-  confirmDialog,
-  el,
-  emptyState,
-  errorState,
-  icon,
-  pageLoader,
-  renderInto,
-  toast,
-} from './ui.js';
+import { auth, users as usersApi } from './core/api.js';
+import { invalidateDirectory, primeUser } from './core/directory.js';
+import { getLocale, onLocaleChange, t, translateDocument } from './core/i18n.js';
+import { matchRoute, navigate, parseLocation, rerender, startRouter } from './core/router.js';
+import { setSessionExpiredHandler } from './core/http.js';
+import { clearUser, getUser, setUser } from './core/session.js';
+import { hasSession } from './core/tokens.js';
+import { mountShell, updateShell } from './layout/shell.js';
+import { renderInto } from './ui/dom.js';
+import { confirmDialog, toast } from './ui/feedback.js';
+import { button } from './ui/primitives.js';
+import { emptyState, errorState, pageLoader } from './ui/states.js';
 import { renderLogin, renderRegister } from './views/auth.js';
+import { renderDashboard } from './views/dashboard.js';
 import { renderEmployeeDetail, renderEmployeeList } from './views/employees.js';
 import { renderProfile } from './views/profile.js';
-import { renderTaskDetail, renderTaskList } from './views/tasks.js';
+import { renderTaskDetail } from './views/tasks/detail.js';
+import { renderTaskList } from './views/tasks/list.js';
 import { renderUsers } from './views/users.js';
 
-const THEME_KEY = 'tracker.theme';
+const HOME = '#/dashboard';
 
 const routes = [
-  { path: '/login', layout: 'auth', guestOnly: true, render: renderLogin, titleKey: 'auth.login.title' },
-  { path: '/register', layout: 'auth', guestOnly: true, render: renderRegister, titleKey: 'auth.register.title' },
-  { path: '/tasks', render: renderTaskList, titleKey: 'tasks.title' },
-  { path: '/tasks/:id', render: renderTaskDetail, titleKey: 'task.detail.title' },
-  { path: '/employees', render: renderEmployeeList, roles: ['ADMIN', 'MANAGER'], titleKey: 'employees.title' },
-  { path: '/employees/:id', render: renderEmployeeDetail, titleKey: 'employee.detail.title' },
-  { path: '/users', render: renderUsers, roles: ['ADMIN'], titleKey: 'users.title' },
-  { path: '/profile', render: renderProfile, titleKey: 'profile.title' },
+  {
+    path: '/login',
+    layout: 'auth',
+    guestOnly: true,
+    render: renderLogin,
+    titleKey: 'auth.login.title',
+  },
+  {
+    path: '/register',
+    layout: 'auth',
+    guestOnly: true,
+    render: renderRegister,
+    titleKey: 'auth.register.title',
+  },
+  {
+    path: '/dashboard',
+    render: renderDashboard,
+    titleKey: 'dashboard.title',
+    crumbKey: 'nav.dashboard',
+  },
+  { path: '/tasks', render: renderTaskList, titleKey: 'tasks.title', crumbKey: 'nav.tasks' },
+  { path: '/tasks/:id', render: renderTaskDetail, titleKey: 'task.detail.title', crumbKey: 'nav.tasks' },
+  {
+    path: '/employees',
+    render: renderEmployeeList,
+    roles: ['ADMIN', 'MANAGER'],
+    titleKey: 'employees.title',
+    crumbKey: 'nav.employees',
+  },
+  {
+    path: '/employees/:id',
+    render: renderEmployeeDetail,
+    titleKey: 'employee.detail.title',
+    crumbKey: 'nav.employees',
+  },
+  { path: '/users', render: renderUsers, roles: ['ADMIN'], titleKey: 'users.title', crumbKey: 'nav.users' },
+  { path: '/profile', render: renderProfile, titleKey: 'profile.title', crumbKey: 'nav.profile' },
 ];
 
-const NAV_ITEMS = [
-  { href: '#/tasks', labelKey: 'nav.tasks', iconName: 'clipboard', match: '/tasks' },
-  { href: '#/employees', labelKey: 'nav.employees', iconName: 'users', match: '/employees', roles: ['ADMIN', 'MANAGER'] },
-  { href: '#/users', labelKey: 'nav.users', iconName: 'shield', match: '/users', roles: ['ADMIN'] },
-  { href: '#/profile', labelKey: 'nav.profile', iconName: 'user', match: '/profile' },
-];
-
-/* ------------------------------------------------------------------ */
-/* Routing helpers                                                     */
-/* ------------------------------------------------------------------ */
-
-function parseLocation() {
-  const raw = location.hash.replace(/^#/, '');
-  const [rawPath, rawSearch = ''] = raw.split('?');
-  const path = rawPath && rawPath !== '/' ? rawPath.replace(/\/+$/, '') : '/';
-  return { path: path.startsWith('/') ? path : `/${path}`, query: new URLSearchParams(rawSearch) };
-}
-
-function matchRoute(path) {
-  const segments = path.split('/').filter(Boolean);
-  for (const route of routes) {
-    const pattern = route.path.split('/').filter(Boolean);
-    if (pattern.length !== segments.length) continue;
-    const params = {};
-    const matched = pattern.every((part, index) => {
-      if (part.startsWith(':')) {
-        params[part.slice(1)] = decodeURIComponent(segments[index]);
-        return true;
-      }
-      return part === segments[index];
-    });
-    if (matched) return { route, params };
-  }
-  return null;
-}
-
-function navigate(target, { replace = false } = {}) {
-  const hash = target.startsWith('#') ? target : `#${target}`;
-  if (location.hash === hash) {
-    render();
-    return;
-  }
-  if (replace) {
-    history.replaceState(null, '', hash);
-    render();
-  } else {
-    location.hash = hash;
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Theme                                                               */
-/* ------------------------------------------------------------------ */
-
-function currentTheme() {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-}
-
-function toggleTheme() {
-  const next = currentTheme() === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  try {
-    localStorage.setItem(THEME_KEY, next);
-  } catch {
-    /* storage unavailable */
-  }
-  renderHeader();
-}
-
-/* ------------------------------------------------------------------ */
-/* Header                                                              */
-/* ------------------------------------------------------------------ */
-
-function languageSwitcher() {
-  return el(
-    'div',
-    { class: 'segmented', role: 'group', 'aria-label': t('a11y.language') },
-    ...LOCALES.map((entry) =>
-      el('button', {
-        type: 'button',
-        class: 'segmented__option',
-        lang: entry.code,
-        text: entry.label,
-        title: entry.name,
-        'aria-label': entry.name,
-        'aria-pressed': String(entry.code === getLocale()),
-        onClick: () => setLocale(entry.code),
-      }),
-    ),
-  );
-}
-
-function themeToggle() {
-  const dark = currentTheme() === 'dark';
-  return button('', {
-    variant: 'ghost',
-    iconName: dark ? 'sun' : 'moon',
-    'aria-label': dark ? t('theme.switchToLight') : t('theme.switchToDark'),
-    title: dark ? t('theme.switchToLight') : t('theme.switchToDark'),
-    onClick: toggleTheme,
-  });
-}
-
-function docsLink() {
-  return el(
-    'a',
-    {
-      class: 'btn btn--ghost btn--icon',
-      href: '/docs',
-      target: '_blank',
-      rel: 'noopener',
-      'aria-label': t('action.openDocs'),
-      title: t('action.openDocs'),
-    },
-    icon('link'),
-  );
-}
-
-function brand() {
-  return el(
-    'a',
-    { class: 'brand', href: '#/tasks' },
-    el('span', { class: 'brand__mark' }, icon('check')),
-    el('span', { text: t('app.name') }),
-  );
-}
-
-function appHeader(activePath) {
-  const user = getUser();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user?.role));
-
-  const nav = el(
-    'nav',
-    { class: 'app-nav', 'aria-label': t('nav.primary') },
-    ...visibleItems.map((item) =>
-      el(
-        'a',
-        {
-          class: 'app-nav__link',
-          href: item.href,
-          'aria-current': activePath.startsWith(item.match) ? 'page' : null,
-          onClick: () => nav.classList.remove('is-open'),
-        },
-        icon(item.iconName),
-        el('span', { text: t(item.labelKey) }),
-      ),
-    ),
-  );
-
-  const toggle = button('', {
-    variant: 'ghost',
-    iconName: 'menu',
-    class: 'btn btn--ghost btn--icon nav-toggle',
-    'aria-label': t('nav.toggle'),
-    'aria-expanded': 'false',
-    onClick: () => {
-      const open = nav.classList.toggle('is-open');
-      toggle.setAttribute('aria-expanded', String(open));
-    },
-  });
-
-  return el(
-    'header',
-    { class: 'app-header' },
-    el(
-      'div',
-      { class: 'app-header__inner' },
-      brand(),
-      nav,
-      toggle,
-      el(
-        'div',
-        { class: 'header-tools' },
-        languageSwitcher(),
-        themeToggle(),
-        docsLink(),
-        user
-          ? el(
-              'div',
-              { class: 'header-user' },
-              el(
-                'div',
-                { class: 'header-user__meta' },
-                el('span', { class: 'header-user__email', text: user.email, title: user.email }),
-                el('span', { class: 'header-user__role', text: t(`role.${user.role}`) }),
-              ),
-              avatar(user.email),
-              button('', {
-                variant: 'ghost',
-                iconName: 'logout',
-                'aria-label': t('action.logout'),
-                title: t('action.logout'),
-                onClick: logout,
-              }),
-            )
-          : null,
-      ),
-    ),
-  );
-}
-
-function authHeader() {
-  return el(
-    'div',
-    { class: 'auth-topbar' },
-    brand(),
-    el('div', { class: 'header-tools' }, languageSwitcher(), themeToggle(), docsLink()),
-  );
-}
-
-let headerState = { layout: 'app', path: '/' };
-
-function renderHeader(state = headerState) {
-  headerState = state;
-  const isAuthLayout = state.layout === 'auth';
-  document.getElementById('main').classList.toggle('main--auth', isAuthLayout);
-  renderInto(document.getElementById('header-root'), isAuthLayout ? authHeader() : appHeader(state.path));
-}
+const main = () => document.getElementById('main');
 
 /* ------------------------------------------------------------------ */
 /* Session                                                             */
@@ -284,104 +94,110 @@ setSessionExpiredHandler(() => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Render                                                              */
+/* Rendering                                                           */
 /* ------------------------------------------------------------------ */
 
-const main = document.getElementById('main');
-let previousPath = null;
 let renderToken = 0;
+let previousPath = null;
+
+const notFoundView = () =>
+  emptyState({
+    iconName: 'search',
+    title: t('error.notFound.title'),
+    description: t('error.notFound.description'),
+    action: button(t('action.backToDashboard'), { iconName: 'arrowLeft', onClick: () => navigate(HOME) }),
+  });
+
+const accessDeniedView = () =>
+  emptyState({
+    iconName: 'shield',
+    title: t('error.accessDenied.title'),
+    description: t('error.accessDenied.description'),
+    action: button(t('action.backToDashboard'), { iconName: 'arrowLeft', onClick: () => navigate(HOME) }),
+  });
 
 async function render() {
   const token = (renderToken += 1);
   const { path, query } = parseLocation();
 
   if (path === '/') {
-    navigate(isAuthenticated() ? '#/tasks' : '#/login', { replace: true });
+    navigate(hasSession() ? HOME : '#/login', { replace: true });
     return;
   }
 
-  const match = matchRoute(path);
+  const match = matchRoute(routes, path);
   if (!match) {
-    renderHeader({ layout: isAuthenticated() ? 'app' : 'auth', path });
-    renderInto(
-      main,
-      emptyState({
-        iconName: 'search',
-        title: t('error.notFound.title'),
-        description: t('error.notFound.description'),
-        action: button(t('action.backToTasks'), { iconName: 'arrowLeft', onClick: () => navigate('#/tasks') }),
-      }),
-    );
+    updateShell({ layout: hasSession() ? 'app' : 'auth', path, breadcrumb: [] });
+    renderInto(main(), notFoundView());
     return;
   }
 
   const { route, params } = match;
 
-  if (route.guestOnly && isAuthenticated()) {
-    navigate('#/tasks', { replace: true });
+  if (route.guestOnly && hasSession()) {
+    navigate(HOME, { replace: true });
     return;
   }
 
-  if (!route.guestOnly && !isAuthenticated()) {
+  if (!route.guestOnly && !hasSession()) {
     navigate(`#/login?redirect=${encodeURIComponent(location.hash)}`, { replace: true });
     return;
   }
 
-  renderHeader({ layout: route.layout === 'auth' ? 'auth' : 'app', path });
-  main.setAttribute('aria-busy', 'true');
-  renderInto(main, pageLoader());
+  updateShell({
+    layout: route.layout === 'auth' ? 'auth' : 'app',
+    path,
+    breadcrumb: route.crumbKey ? [{ label: t(route.crumbKey) }] : [],
+  });
+
+  document.title = `${t(route.titleKey)} · ${t('app.name')}`;
+  main().setAttribute('aria-busy', 'true');
+  renderInto(main(), pageLoader());
 
   // The profile drives role-aware navigation, so it must be loaded before any
   // protected view renders.
   if (!route.guestOnly && !getUser()) {
     try {
       const profile = await usersApi.me();
+      if (token !== renderToken) return;
       setUser(profile);
       primeUser(profile);
-      renderHeader({ layout: 'app', path });
+      updateShell({
+        layout: 'app',
+        path,
+        breadcrumb: route.crumbKey ? [{ label: t(route.crumbKey) }] : [],
+      });
     } catch (error) {
       if (token !== renderToken) return;
-      main.removeAttribute('aria-busy');
-      renderInto(main, errorState({ message: error.message, onRetry: render }));
+      main().removeAttribute('aria-busy');
+      renderInto(main(), errorState({ error, onRetry: render }));
       return;
     }
   }
 
-  if (token !== renderToken) return;
-
   if (route.roles && !route.roles.includes(getUser()?.role)) {
-    main.removeAttribute('aria-busy');
-    renderInto(
-      main,
-      emptyState({
-        iconName: 'slash',
-        title: t('error.accessDenied.title'),
-        description: t('error.accessDenied.description'),
-        action: button(t('action.backToTasks'), { iconName: 'arrowLeft', onClick: () => navigate('#/tasks') }),
-      }),
-    );
+    main().removeAttribute('aria-busy');
+    renderInto(main(), accessDeniedView());
     return;
   }
-
-  document.title = `${t(route.titleKey)} · ${t('app.name')}`;
 
   try {
     const view = await route.render({ params, query, navigate, reload: render, logout });
     if (token !== renderToken) return;
-    renderInto(main, view);
+    renderInto(main(), view);
   } catch (error) {
     if (token !== renderToken) return;
-    renderInto(main, errorState({ message: error.message || t('error.loadFailed'), onRetry: render }));
+    renderInto(main(), errorState({ error, onRetry: render }));
   } finally {
-    if (token === renderToken) main.removeAttribute('aria-busy');
+    if (token === renderToken) main().removeAttribute('aria-busy');
   }
 
-  // Move focus and scroll only when the route actually changed, so switching
-  // language or reloading data does not disturb the reader's position.
+  // Focus and scroll move only when the route actually changed, so reloading
+  // data or switching language does not disturb the reader's position.
   if (path !== previousPath) {
     previousPath = path;
     window.scrollTo({ top: 0 });
-    main.focus({ preventScroll: true });
+    main().focus({ preventScroll: true });
   }
 }
 
@@ -389,14 +205,14 @@ async function render() {
 /* Bootstrap                                                           */
 /* ------------------------------------------------------------------ */
 
-translateDocument();
 document.documentElement.lang = getLocale();
+translateDocument();
+mountShell({ onLogout: logout });
 
 onLocaleChange(() => {
   translateDocument();
   const scrollY = window.scrollY;
-  render().then(() => window.scrollTo({ top: scrollY }));
+  Promise.resolve(rerender()).then(() => window.scrollTo({ top: scrollY }));
 });
 
-window.addEventListener('hashchange', render);
-render();
+startRouter(render);

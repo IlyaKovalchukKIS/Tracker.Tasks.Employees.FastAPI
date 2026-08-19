@@ -9,6 +9,7 @@ __pycache__
 .coverage
 htmlcov
 tests
+frontend/tests
 postgres_data
 *.md
 images

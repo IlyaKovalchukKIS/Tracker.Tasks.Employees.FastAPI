@@ -32,6 +32,18 @@ async def test_static_assets_are_served(client: AsyncClient) -> None:
     assert "javascript" in script.headers["content-type"]
 
 
+async def test_nested_modules_are_served(client: AsyncClient) -> None:
+    """The client imports ES modules from subdirectories, which must resolve.
+
+    Клиент импортирует ES-модули из подкаталогов, они должны отдаваться.
+    """
+    for path in ("/js/core/api.js", "/js/ui/primitives.js", "/js/views/tasks/list.js"):
+        response = await client.get(path)
+
+        assert response.status_code == 200, path
+        assert "javascript" in response.headers["content-type"], path
+
+
 async def test_api_routes_take_priority_over_static_files(client: AsyncClient) -> None:
     """The static mount must not shadow API endpoints or the OpenAPI schema.
 

@@ -21,6 +21,7 @@ This project gives a small team a backend for that workflow — JWT-authenticate
 - Pagination, filtering, sorting, and search
 - Optional subtasks via `parent_id`
 - Web client in English and Russian, switchable from any page, with light and dark themes
+- Dashboard with workload, overdue work, and status / priority breakdowns
 - Alembic migrations against PostgreSQL
 - Automated tests and GitHub Actions CI
 - Docker Compose for local and VPS-style deployment
@@ -52,6 +53,7 @@ The HTTP layer stays thin. Services enforce who can create, view, update, or del
 - Vanilla ES modules and CSS for the web client, with no build step
 - Docker / Docker Compose
 - Pytest
+- Node.js test runner for the web client (`npm test`)
 - Ruff
 - GitHub Actions
 
@@ -87,13 +89,16 @@ The API serves a web client at the root URL. Start the app and open http://127.0
 What it covers:
 
 - Register and sign in; the session is refreshed automatically when the access token expires
+- Dashboard: total / active / overdue / completed work, status and priority mix, items that need attention, and recent tasks
 - Task list with search, status / priority / assignee filters, sorting, pagination, and status counts
 - Create, edit, assign, and delete tasks, with a task detail page for the full description and metadata
 - Inline status changes, so employees can report progress without opening a form
 - Employee directory with assigned tasks, and an administrator screen for roles, managers, and account state
 - Profile page for changing your own email or password
 
-The interface hides what the caller's role cannot do, and the API still enforces every rule independently.
+Routes are hash-based: `#/dashboard`, `#/tasks`, `#/tasks/:id`, `#/employees`, `#/users` (administrators), `#/profile`. The interface hides what the caller's role cannot do, and the API still enforces every rule independently.
+
+On a wide screen the client uses a sidebar and data tables. Tablets get a compact icon rail. Phones get a navigation drawer, stacked pages, and task cards instead of a seven-column table.
 
 ### Languages and appearance
 
@@ -103,21 +108,19 @@ A light / dark theme toggle sits next to the language switcher and follows the o
 
 ### Implementation
 
-`frontend/` is plain ES modules with no build step and no dependencies, so the repository stays Python-only and `docker compose up` serves the client unchanged. Routing is hash-based (`#/tasks/12`), which is why serving `index.html` at `/` is enough for deep links to work without rewrite rules.
+`frontend/` is plain ES modules with no build step and no runtime dependencies, so `docker compose up` serves the client unchanged. `package.json` only marks the sources as ESM and runs the client test suite. Routing is hash-based (`#/tasks/12`), which is why serving `index.html` at `/` is enough for deep links to work without rewrite rules.
 
 ```
 frontend/
   index.html             # App shell
   css/styles.css         # Design tokens and components
   js/
-    app.js               # Router, header, language and theme switchers
-    api.js               # Fetch client, token storage, refresh on 401
-    i18n.js              # EN / RU dictionaries and locale-aware formatting
-    ui.js                # Elements, badges, toasts, accessible modal
-    session.js           # Current user
-    directory.js         # User lookup cache, to show emails instead of ids
-    validate.js          # Client-side mirror of the API's field rules
-    views/               # Auth, tasks, employees, users, profile
+    app.js               # Routes, access guards, session lifecycle
+    core/                # API client, tokens, i18n, permissions, filters
+    layout/              # Sidebar, top bar, mobile drawer
+    ui/                  # Buttons, forms, tables, toasts, empty/error states
+    views/               # Dashboard, auth, tasks, employees, users, profile
+  tests/                 # Node test suite (npm test)
 ```
 
 Tokens are kept in `localStorage`, which is convenient for a same-origin client but readable by any script on the page. If you extend this with third-party scripts, move to cookie-based sessions first.
@@ -176,6 +179,12 @@ poetry run pytest
 poetry run ruff check src tests
 ```
 
+The web client has its own suite (locales, permissions, filters, deadlines, metrics, API error mapping). It needs Node.js 22+ and no extra packages:
+
+```bash
+npm test
+```
+
 ## Docker
 
 ```bash
@@ -203,6 +212,7 @@ src/
     crud/                # Query helpers
     db_helper.py         # Async engine and session
 frontend/                # Bilingual web client, served at /
+package.json             # ESM marker and `npm test` for the web client
 migrations/              # Alembic revisions
 tests/                   # Pytest suite
 deploy/nginx.example.conf
@@ -211,11 +221,11 @@ deploy/nginx.example.conf
 
 ## Testing
 
-The suite covers registration and login, invalid credentials, expired tokens, refresh-token rotation, role restrictions, task CRUD and assignment, filtering, pagination, sorting, and constraint failures such as duplicate email or deleting a user who still owns tasks. It also checks that the web client is served and that the static mount does not shadow API routes.
+The suite covers registration and login, invalid credentials, expired tokens, refresh-token rotation, role restrictions, task CRUD and assignment, filtering, pagination, sorting, and constraint failures such as duplicate email or deleting a user who still owns tasks. It also checks that the web client is served and that the static mount does not shadow API routes. `npm test` covers the client's dictionaries, role rules, task filters, deadline logic, and API error mapping.
 
 ## CI
 
-GitHub Actions runs on every push and pull request: install dependencies, lint with Ruff, run Pytest, and build the Docker image. The job fails if tests fail.
+GitHub Actions runs on every push and pull request: install dependencies, lint with Ruff, run Pytest, run the web-client tests (`npm test`), and build the Docker image. The job fails if tests fail.
 
 ## Deployment
 

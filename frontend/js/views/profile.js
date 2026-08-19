@@ -1,57 +1,59 @@
 /**
- * Own account details, credential changes, and sign-out.
+ * Own account: profile details, credential changes, and sign-out.
  */
 
-import { users as usersApi } from '../api.js';
-import { labelFor, primeUser, resolveUsers } from '../directory.js';
-import { formatDate, t } from '../i18n.js';
-import { getUser, setUser } from '../session.js';
+import { users as usersApi } from '../core/api.js';
+import { primeUser, resolveUsers } from '../core/directory.js';
+import { formatDate, t } from '../core/i18n.js';
+import { isEmployee } from '../core/permissions.js';
+import { getUser, setUser } from '../core/session.js';
+import { compact, validateEmail, validatePassword } from '../core/validate.js';
+import { el } from '../ui/dom.js';
+import { toast } from '../ui/feedback.js';
+import { field, focusFirstError, formError, formSuccess, input, setFieldErrors, withPasswordToggle } from '../ui/forms.js';
 import {
   activeBadge,
   avatar,
   button,
-  el,
-  field,
-  formError,
-  input,
+  card,
+  detailList,
+  pageHeader,
+  personLink,
   roleBadge,
   setButtonLoading,
-  setFieldErrors,
-  toast,
-} from '../ui.js';
-import { compact, validateEmail, validatePassword } from '../validate.js';
-
-/** Card wrapper for the two credential forms. */
-function formCard({ title, form }) {
-  return el(
-    'section',
-    { class: 'card' },
-    el('div', { class: 'card__header' }, el('h2', { text: title })),
-    el('div', { class: 'card__body' }, form),
-  );
-}
+} from '../ui/primitives.js';
 
 function emailForm(profile, onUpdated) {
   const emailInput = input({ type: 'email', value: profile.email, autocomplete: 'email' });
   const banner = formError();
+  const success = formSuccess();
   const submit = button(t('action.save'), { variant: 'primary', type: 'submit' });
 
   const form = el(
     'form',
-    { class: 'form', novalidate: true, onSubmit: onSubmit },
+    { class: 'form', novalidate: true, onSubmit },
     banner,
+    success,
     field({ name: 'email', label: t('profile.field.newEmail'), control: emailInput, required: true }),
-    el('div', {}, submit),
+    el('div', { class: 'form-actions' }, submit),
   );
 
   async function onSubmit(event) {
     event.preventDefault();
     banner.setMessage(null);
+    success.setMessage(null);
+
     const email = emailInput.value.trim();
     const errors = compact({ email: validateEmail(email) });
     setFieldErrors(form, errors);
-    if (Object.keys(errors).length > 0) return;
-    if (email === profile.email) return;
+    if (Object.keys(errors).length > 0) {
+      focusFirstError(form);
+      return;
+    }
+    if (email === profile.email) {
+      success.setMessage(t('profile.emailUnchanged'));
+      return;
+    }
 
     setButtonLoading(submit, true);
     try {
@@ -75,41 +77,53 @@ function passwordForm() {
   const passwordInput = input({ type: 'password', autocomplete: 'new-password' });
   const confirmInput = input({ type: 'password', autocomplete: 'new-password' });
   const banner = formError();
+  const success = formSuccess();
   const submit = button(t('action.save'), { variant: 'primary', type: 'submit' });
 
   const form = el(
     'form',
-    { class: 'form', novalidate: true, onSubmit: onSubmit },
+    { class: 'form', novalidate: true, onSubmit },
     banner,
+    success,
     field({
       name: 'password',
       label: t('profile.field.newPassword'),
-      control: passwordInput,
+      control: withPasswordToggle(passwordInput),
       hint: t('auth.password.hint'),
       required: true,
     }),
-    field({ name: 'passwordConfirm', label: t('auth.field.passwordConfirm'), control: confirmInput, required: true }),
-    el('div', {}, submit),
+    field({
+      name: 'passwordConfirm',
+      label: t('auth.field.passwordConfirm'),
+      control: withPasswordToggle(confirmInput),
+      required: true,
+    }),
+    el('div', { class: 'form-actions' }, submit),
   );
 
   async function onSubmit(event) {
     event.preventDefault();
     banner.setMessage(null);
+    success.setMessage(null);
+
     const password = passwordInput.value;
     const errors = compact({
       password: validatePassword(password),
       passwordConfirm: password && confirmInput.value !== password ? t('validation.passwordMismatch') : null,
     });
     setFieldErrors(form, errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      focusFirstError(form);
+      return;
+    }
 
     setButtonLoading(submit, true);
     try {
-      const updated = await usersApi.updateMe({ password });
-      setUser(updated);
+      setUser(await usersApi.updateMe({ password }));
       passwordInput.value = '';
       confirmInput.value = '';
       setFieldErrors(form, {});
+      success.setMessage(t('profile.passwordUpdated'));
       toast(t('profile.passwordUpdated'), 'success');
     } catch (error) {
       banner.setMessage(error.message);
@@ -129,62 +143,50 @@ export async function renderProfile({ reload, logout }) {
   return el(
     'div',
     {},
+    pageHeader({ title: t('profile.title'), description: t('profile.subtitle') }),
     el(
       'div',
-      { class: 'page-header' },
+      { class: 'detail-columns detail-columns--reverse' },
       el(
         'div',
-        { class: 'page-header__text' },
-        el('h1', { text: t('profile.title') }),
-        el('p', { class: 'page-header__subtitle', text: t('profile.subtitle') }),
-      ),
-    ),
-    el(
-      'div',
-      { class: 'stack' },
-      el(
-        'section',
-        { class: 'card' },
-        el(
-          'div',
-          { class: 'card__header' },
-          el('div', { class: 'row' }, avatar(profile.email), el('h2', { text: profile.email })),
-          roleBadge(profile.role),
+        { class: 'detail-columns__main stack' },
+        card(
+          { title: t('profile.changeEmail'), description: t('profile.changeEmail.description') },
+          emailForm(profile, reload),
         ),
-        el(
-          'div',
-          { class: 'card__body' },
+        card(
+          { title: t('profile.changePassword'), description: t('profile.changePassword.description') },
+          passwordForm(),
+        ),
+        card(
+          { title: t('profile.session'), description: t('profile.sessionHint') },
+          el('div', { class: 'form-actions' }, button(t('action.logout'), { iconName: 'logout', onClick: logout })),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'detail-columns__side' },
+        card(
+          {},
           el(
-            'dl',
-            { class: 'detail-list' },
-            el('dt', { text: t('profile.field.id') }),
-            el('dd', { class: 'mono', text: `#${profile.id}` }),
-            el('dt', { text: t('profile.field.role') }),
-            el('dd', {}, roleBadge(profile.role)),
-            el('dt', { text: t('profile.field.manager') }),
-            el('dd', { text: labelFor(profile.manager_id) ?? t('employee.noManager') }),
-            el('dt', { text: t('profile.field.status') }),
-            el('dd', {}, activeBadge(profile.is_active)),
-            el('dt', { text: t('profile.field.created') }),
-            el('dd', { text: formatDate(profile.created_at, { withTime: true }) }),
+            'div',
+            { class: 'profile-identity' },
+            avatar(profile.email, { size: 'lg' }),
+            el(
+              'div',
+              {},
+              el('p', { class: 'profile-identity__email', text: profile.email }),
+              roleBadge(profile.role),
+            ),
           ),
-        ),
-      ),
-      el(
-        'div',
-        { class: 'grid-2' },
-        formCard({ title: t('profile.changeEmail'), form: emailForm(profile, reload) }),
-        formCard({ title: t('profile.changePassword'), form: passwordForm() }),
-      ),
-      el(
-        'section',
-        { class: 'card' },
-        el('div', { class: 'card__header' }, el('h2', { text: t('profile.session') })),
-        el(
-          'div',
-          { class: 'card__body stack-sm' },
-          el('p', { class: 'field__hint', text: t('profile.sessionHint') }),
-          el('div', {}, button(t('action.logout'), { iconName: 'logout', onClick: logout })),
+          detailList([
+            { label: t('profile.field.id'), value: el('span', { class: 'mono', text: `#${profile.id}` }) },
+            ...(isEmployee(profile)
+              ? [{ label: t('profile.field.manager'), value: profile.manager_id ? personLink(profile.manager_id) : t('employee.noManager') }]
+              : []),
+            { label: t('profile.field.status'), value: activeBadge(profile.is_active) },
+            { label: t('profile.field.created'), value: formatDate(profile.created_at, { withTime: true }) },
+          ]),
         ),
       ),
     ),

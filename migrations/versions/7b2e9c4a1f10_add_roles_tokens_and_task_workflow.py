@@ -67,7 +67,15 @@ def upgrade() -> None:
         "task",
         sa.Column("priority", sa.String(length=20), nullable=False, server_default="MEDIUM"),
     )
-    op.add_column("task", sa.Column("created_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column(
+        "task",
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
+    )
     op.add_column(
         "task",
         sa.Column(
@@ -79,7 +87,13 @@ def upgrade() -> None:
     )
     op.execute("UPDATE task SET created_at = date_at")
     op.execute("UPDATE task SET status = 'IN_PROGRESS' WHERE is_active IS TRUE")
-    op.alter_column("task", "created_at", nullable=False)
+    op.alter_column(
+        "task",
+        "created_at",
+        existing_type=sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
     op.alter_column("task", "deadline", existing_type=sa.DateTime(), nullable=True)
 
     op.drop_constraint("task_owner_id_fkey", "task", type_="foreignkey")

@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1017" media="(prefers-color-scheme: dark)" />
     <title>Task Tracker</title>
     <meta
       name="description"
@@ -11,11 +13,11 @@
     />
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><path d='M9 16.5l4.5 4.5L23 11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235457e5'/><path d='M9 16.5l4.5 4.5L23 11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"
     />
     <link rel="stylesheet" href="/css/styles.css" />
     <script>
-      // Applied before first paint so the stored theme does not flash.
+      // Applied before the first paint so the stored theme does not flash.
       try {
         const stored = localStorage.getItem('tracker.theme');
         const theme =
@@ -28,7 +30,7 @@
       }
     </script>
   </head>
-  <body>
+  <body data-layout="app">
     <a class="skip-link" href="#main" data-i18n="a11y.skipToContent">Skip to main content</a>
 
     <div id="header-root"></div>
@@ -41,7 +43,9 @@
     <div id="modal-root"></div>
 
     <noscript>
-      <div class="noscript">This application requires JavaScript. / Для работы приложения нужен JavaScript.</div>
+      <div class="noscript">
+        This application requires JavaScript. / Для работы приложения нужен JavaScript.
+      </div>
     </noscript>
 
     <script type="module" src="/js/app.js"></script>

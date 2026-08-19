@@ -1,13 +1,14 @@
 /**
- * Cache of user records used to show emails instead of raw numeric ids.
+ * Cache of user records, so task lists can show an email instead of a raw id.
  *
- * Managers and administrators can list the directory in one request. Employees
- * cannot, so unknown ids are looked up individually and remembered as misses to
- * avoid repeating a request the API will refuse again.
+ * Managers and administrators can fetch the whole directory in one request.
+ * Employees cannot, so unknown ids are looked up individually and remembered
+ * as misses to avoid repeating a request the API will refuse again.
  */
 
 import { employees as employeesApi } from './api.js';
-import { canManageWork } from './session.js';
+import { canViewDirectory } from './permissions.js';
+import { getUser } from './session.js';
 
 const cache = new Map();
 let listPromise = null;
@@ -16,9 +17,7 @@ export function primeUser(user) {
   if (user?.id) cache.set(user.id, user);
 }
 
-export function primeUsers(list = []) {
-  list.forEach(primeUser);
-}
+export const primeUsers = (list = []) => list.forEach(primeUser);
 
 export function invalidateDirectory() {
   listPromise = null;
@@ -26,7 +25,7 @@ export function invalidateDirectory() {
 
 /** Full directory for roles allowed to list it; `[]` for everyone else. */
 export async function loadDirectory({ force = false } = {}) {
-  if (!canManageWork()) return [];
+  if (!canViewDirectory(getUser())) return [];
   if (force) listPromise = null;
   if (!listPromise) {
     listPromise = employeesApi
@@ -55,7 +54,7 @@ export async function resolveUsers(ids) {
     stillMissing.map((id) =>
       employeesApi
         .get(id)
-        .then((user) => primeUser(user))
+        .then(primeUser)
         .catch(() => cache.set(id, null)),
     ),
   );
@@ -65,4 +64,10 @@ export async function resolveUsers(ids) {
 export function labelFor(id) {
   if (!id) return null;
   return cache.get(id)?.email ?? `#${id}`;
+}
+
+/** Cached user record, or `null` when the id is unknown or not visible. */
+export function getCachedUser(id) {
+  if (!id) return null;
+  return cache.get(id) || null;
 }

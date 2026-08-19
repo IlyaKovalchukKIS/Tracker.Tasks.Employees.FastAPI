@@ -19,7 +19,7 @@ export function validateEmail(value) {
 
 export function validatePassword(value) {
   if (!value) return t('validation.required');
-  if (value.length < MIN_PASSWORD_LENGTH) return t('validation.passwordShort');
+  if (value.length < MIN_PASSWORD_LENGTH) return t('validation.tooShort', { min: MIN_PASSWORD_LENGTH });
   return null;
 }
 
@@ -30,6 +30,5 @@ export function validateRequired(value, { max } = {}) {
 }
 
 /** Drop keys with no message so callers can test emptiness with `Object.keys`. */
-export function compact(errors) {
-  return Object.fromEntries(Object.entries(errors).filter(([, message]) => Boolean(message)));
-}
+export const compact = (errors) =>
+  Object.fromEntries(Object.entries(errors).filter(([, message]) => Boolean(message)));

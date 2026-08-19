@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install Poetry
         run: pip install poetry
 
@@ -37,6 +41,9 @@ jobs:
           DB_PORT: "5432"
           DB_NAME: test
         run: poetry run pytest -q
+
+      - name: Test web client
+        run: npm test
 
       - name: Build Docker image
         run: docker build -t employee-task-api:${{ github.sha }} .
